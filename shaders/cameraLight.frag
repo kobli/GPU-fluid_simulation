@@ -17,11 +17,8 @@ struct Material {
 };
 uniform Material Mat;
 
-vec3 lightColor = vec3(1,1,1);
-
 void main() {
 	vec3 L = normalize(CameraPos - worldPosition.xyz);
-	float di = Mat.diffuseK*clamp(dot(L,normal), 0,1);
-	fColor = vec4(clamp(di*lightColor, 0,1), 1);
-	fColor = vec4(1,1,1,1); //TODO
+	float di = clamp(dot(L,normal), 0,1);
+	fColor = vec4(clamp((Mat.ambientK + Mat.diffuseK*di), 0,1)*Mat.color.rgb, 1);
 }
