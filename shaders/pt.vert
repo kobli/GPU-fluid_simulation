@@ -1,6 +1,7 @@
 #version 330
 layout(location = 0) in vec3 vPosition;
 layout(location = 1) in vec3 vNormal;
+layout(location = 2) in vec3 vTranslationOffset;
 
 out Vertex
 {
@@ -14,7 +15,7 @@ uniform mat4 ModelInvT;
 
 void main()
 {
-	vec4 p = Model*vec4(vPosition.xyz,1);
+	vec4 p = Model*vec4(vPosition.xyz,1) + vec4(vTranslationOffset, 0);
 	normal = normalize((ModelInvT*vec4(vNormal.xyz,0)).xyz);
 	worldPosition = p.xyz;
 	gl_Position = ViewProject*p;

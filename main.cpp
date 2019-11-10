@@ -87,8 +87,10 @@ class SPH {
 		SPH(unsigned n) {
 			particlePos.resize(n);
 			int i = 0;
-			for(vec3& p : particlePos)
-				p = vec3(0.5, 1+i, 0.5);
+			for(vec3& p : particlePos) {
+				p = vec3(0.5, 1+i*ParticleRad*2, 0.5);
+				++i;
+			}
 			initSphereMesh();
 		}
 
@@ -151,18 +153,28 @@ class SPH {
 			glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
 
 			indexN = indices.size();
+
+			glGenBuffers(1, &vboParticlePos);
+			glBindBuffer(GL_ARRAY_BUFFER, vboParticlePos);
+			glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+			glEnableVertexAttribArray(2);
+			glVertexAttribDivisor(2, 1);
 		}
 
 		void draw() {
 			glBindVertexArray(vao);
+
+			glBindBuffer(GL_ARRAY_BUFFER, vboParticlePos);
+			glBufferData(GL_ARRAY_BUFFER, particlePos.size()*sizeof(vec3), particlePos.data(), GL_DYNAMIC_DRAW);
+
 			GLuint program;
 			glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&program);
-			mat4x4 transform = translate(identity<mat4x4>(), particlePos[0])*scale(identity<mat4x4>(), vec3(ParticleRad, ParticleRad, ParticleRad));
+			mat4x4 transform = scale(identity<mat4x4>(), vec3(ParticleRad, ParticleRad, ParticleRad));
 			setUniform(program, transform, "Model");
 			setUniform(program, transpose(inverse(transform)), "ModelInvT");
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
-			glDrawElements(GL_QUADS, indexN, GL_UNSIGNED_INT, NULL);
+			glDrawElementsInstanced(GL_QUADS, indexN, GL_UNSIGNED_INT, NULL, particlePos.size());
 		}
 
 	private:
@@ -172,6 +184,7 @@ class SPH {
 		GLuint vbo;
 		GLuint vboNormals;
 		GLuint vboIndices;
+		GLuint vboParticlePos;
 		unsigned indexN;
 };
 
@@ -208,6 +221,8 @@ class Application {
 			glUniform4fv(colorLoc, 1, material.color.data.data);
 			GLint camPosLoc = glGetUniformLocation(shader, "CameraPos");
 			glUniform3fv(camPosLoc, 1, cameraPos.data.data);
+
+			glVertexAttrib3f(2, 0, 0, 0);
 
 			b.draw();
 			sph.draw();
