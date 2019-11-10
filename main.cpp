@@ -23,6 +23,27 @@ struct Material {
 	float shininess;
 };
 
+double w(vec3 r, double h) {
+	double rLen = length(r);
+	if(rLen >= 0 && rLen <= h)
+		return 315./(64.*M_PI*pow(h,9)) * pow(h*h - rLen*rLen, 3);
+	return 0;
+}
+
+vec3 wPresure1(vec3 r, double h) {
+	double rLen = length(r);
+	if(rLen > 0 && rLen <= h)
+		return r * float(1./rLen * 45./(M_PI*pow(h,6)) * pow(h-rLen, 2));
+	return {};
+}
+
+double wViscosity2(vec3 r, double h) {
+	double rLen = length(r);
+	if(rLen >= 0 && rLen <= h)
+		return 45./(M_PI*pow(h,6))*(h-rLen);
+	return 0;
+}
+
 class Bounds {
 	public:
 		Bounds(vec3 _center, vec3 _size): center{_center} {
@@ -85,6 +106,9 @@ class Bounds {
 class SPH {
 	public:
 		SPH(unsigned n) {
+			particleVelTmp.resize(n);
+			particlePosTmp.resize(n);
+			particleVel.resize(n,{});
 			particlePos.resize(n);
 			int i = 0;
 			for(vec3& p : particlePos) {
@@ -177,8 +201,49 @@ class SPH {
 			glDrawElementsInstanced(GL_QUADS, indexN, GL_UNSIGNED_INT, NULL, particlePos.size());
 		}
 
+		void update() {
+			const float step = 0.00001; // [seconds]
+			const float h = 0.2;
+			const float m = 10;
+			const float rho0 = 0;
+			const float k = 1;
+			const float mu = 1;
+			// calculate density and presure at each particle position
+			vector<float> density(particlePos.size(), 0);
+			vector<float> pressure(particlePos.size(), 0);
+			for(unsigned i = 0; i < particlePos.size(); ++i) {
+				for(unsigned j = 0; j < particlePos.size(); ++j) {
+					density[i] += m*w(particlePos[i]-particlePos[j], h);
+					pressure[i] += k*(density[i]-rho0);
+				}
+			}
+			// calculate forces acting upon its particle, its acceleration; update its position and speed
+			for(unsigned i = 0; i < particlePos.size(); ++i) {
+				vec3 fPressure;
+				vec3 fViscosity;
+				for(unsigned j = 0; j < particlePos.size(); ++j) {
+					fPressure -= m*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], h);
+					fViscosity += (particleVel[j]-particleVel[i])*float(mu*m/density[j]*wViscosity2(particlePos[i]-particlePos[j], h));
+				}
+				vec3 fGravity = -UP*9.81f*m;
+				vec3 f = fGravity + fPressure + fViscosity;
+				vec3 a = f/density[i];
+				assert(length(a) > 0);
+				assert(length(f) > 0);
+				// update position using the current speed
+				particlePosTmp[i] = particlePos[i] + particleVel[i]*step;
+				// update speed using the computed acceleration
+				particleVelTmp[i] = particleVel[i] + a*step;
+			}
+			swap(particlePos, particlePosTmp);
+			swap(particleVel, particleVelTmp);
+		}
+
 	private:
 		vector<vec3> particlePos;
+		vector<vec3> particleVel;
+		vector<vec3> particlePosTmp;
+		vector<vec3> particleVelTmp;
 
 		GLuint vao;
 		GLuint vbo;
@@ -229,6 +294,7 @@ class Application {
 		}
 
 		void update() {
+			sph.update();
 		}
 
 		Bounds b;
