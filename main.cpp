@@ -46,7 +46,7 @@ double wViscosity2(vec3 r, double h) {
 
 class Bounds {
 	public:
-		Bounds(vec3 _center, vec3 _size): center{_center} {
+		Bounds(vec3 _size): min{0,0,0}, max{_size} {
 			transform = scale(identity<mat4x4>(), _size);
 			glGenVertexArrays(1, &vao);
 			glBindVertexArray(vao);
@@ -96,7 +96,27 @@ class Bounds {
 			glDrawElements(GL_LINES, 2*12, GL_UNSIGNED_INT, 0);
 		}
 
-		vec3 center;
+		bool isOutside(const vec3 &p, vec3 &n) {
+			bool r = true;
+			if(p.x < min.x)
+				n = {1,0,0};
+			else if(p.x > max.x)
+				n = {-1,0,0};
+			else if(p.y < min.y)
+				n = {0,1,0};
+			else if(p.y > max.y)
+				n = {0,-1,0};
+			else if(p.z < min.z)
+				n = {0,0,1};
+			else if(p.z > max.z)
+				n = {0,0,-1};
+			else
+				r = false;
+			return r;
+		}
+
+		vec3 min;
+		vec3 max;
 		mat4x4 transform;
 		GLuint vao;
 		GLuint vbo;
@@ -105,15 +125,15 @@ class Bounds {
 
 class SPH {
 	public:
-		SPH(unsigned n) {
+		SPH(unsigned n, Bounds& _b): b{_b} {
 			particleVelTmp.resize(n);
 			particlePosTmp.resize(n);
 			particleVel.resize(n,{});
 			particlePos.resize(n);
-			int i = 0;
-			for(vec3& p : particlePos) {
-				p = vec3(0.5, 1+i*ParticleRad*2, 0.5);
-				++i;
+			for(unsigned i = 0; i < particlePos.size(); ++i) {
+				//particlePos[i] = vec3(0.5, 1+i*ParticleRad*2, 0.5);
+				particlePos[i] = vec3(0.5, 1, 0.5);
+				particleVel[i] = normalize(vec3(rand(), rand(), rand()));
 			}
 			initSphereMesh();
 		}
@@ -202,9 +222,9 @@ class SPH {
 		}
 
 		void update() {
-			const float step = 0.00001; // [seconds]
-			const float h = 0.2;
-			const float m = 10;
+			const float step = 0.001; // [seconds]
+			const float h = 1;
+			const float m = 1;
 			const float rho0 = 0;
 			const float k = 1;
 			const float mu = 1;
@@ -216,6 +236,7 @@ class SPH {
 					density[i] += m*w(particlePos[i]-particlePos[j], h);
 					pressure[i] += k*(density[i]-rho0);
 				}
+				assert(density[i] != 0);
 			}
 			// calculate forces acting upon its particle, its acceleration; update its position and speed
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
@@ -225,8 +246,8 @@ class SPH {
 					fPressure -= m*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], h);
 					fViscosity += (particleVel[j]-particleVel[i])*float(mu*m/density[j]*wViscosity2(particlePos[i]-particlePos[j], h));
 				}
-				vec3 fGravity = -UP*9.81f*m;
-				vec3 f = fGravity + fPressure + fViscosity;
+				vec3 fGravity = -UP*9.81f*density[i];
+				vec3 f = fGravity + fViscosity + fPressure;
 				vec3 a = f/density[i];
 				assert(length(a) > 0);
 				assert(length(f) > 0);
@@ -237,6 +258,19 @@ class SPH {
 			}
 			swap(particlePos, particlePosTmp);
 			swap(particleVel, particleVelTmp);
+			collide();
+		}
+
+		void collide() {
+			for(unsigned i = 0; i < particlePos.size(); ++i) {
+				vec3 surfaceNormal;
+				if(b.isOutside(particlePos[i], surfaceNormal) && length(particleVel[i]) != 0) {
+					if(surfaceNormal != vec3(0,-1,0)) { // open-topped box
+						vec3 d = normalize(-particleVel[i]);
+						particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*length(particleVel[i]);
+					}
+				}
+			}
 		}
 
 	private:
@@ -251,11 +285,12 @@ class SPH {
 		GLuint vboIndices;
 		GLuint vboParticlePos;
 		unsigned indexN;
+		Bounds &b;
 };
 
 class Application {
 	public:
-		Application(): b{{}, {1,1,1}}, sph{100} {
+		Application(): b{{1,1,1}}, sph{100, b} {
 			cameraPos = {-2,2,.5};
 			mat4x4 cameraView = lookAt(cameraPos, {.5,.5,.5}, UP);
 			mat4x4 projection = perspective(70., 1., 0.1, 1000.);
