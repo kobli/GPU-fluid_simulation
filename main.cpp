@@ -132,7 +132,7 @@ class SPH {
 			particlePos.resize(n);
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
 				//particlePos[i] = vec3(0.5, 1+i*ParticleRad*2, 0.5);
-				particlePos[i] = vec3(0.5, 1, 0.5);
+				particlePos[i] = vec3(0.5, 0.5, 0.5);
 				particleVel[i] = normalize(vec3(rand(), rand(), rand()));
 			}
 			initSphereMesh();
@@ -264,10 +264,13 @@ class SPH {
 		void collide() {
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
 				vec3 surfaceNormal;
-				if(b.isOutside(particlePos[i], surfaceNormal) && length(particleVel[i]) != 0) {
-					if(surfaceNormal != vec3(0,-1,0)) { // open-topped box
-						vec3 d = normalize(-particleVel[i]);
-						particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*length(particleVel[i]);
+				float velL = length(particleVel[i]);
+				if(b.isOutside(particlePos[i], surfaceNormal) && velL > 0 && !isinf(velL)) {
+					//if(surfaceNormal != vec3(0,-1,0)) // open-topped box
+					{
+						vec3 d = -particleVel[i]/velL;
+						assert(length(d) == 1);
+						particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
 					}
 				}
 			}
