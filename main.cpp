@@ -14,6 +14,12 @@ using namespace glm;
 #define IMAGE_HEIGHT 1024
 
 const float ParticleRad = 0.03;
+float Step = 0.005; // [seconds]
+float H = 0.8;
+float M = 1;
+float Rho0 = 0;
+float K = 200;
+float Mu = 5;
 
 struct Material {
 	vec4 color;
@@ -130,12 +136,15 @@ class SPH {
 			particlePosTmp.resize(n);
 			particleVel.resize(n,{});
 			particlePos.resize(n);
+			initSphereMesh();
+			reset();
+		}
+
+		void reset() {
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
-				//particlePos[i] = vec3(0.5, 1+i*ParticleRad*2, 0.5);
 				particlePos[i] = vec3(0.5, 0.5, 0.5);
 				particleVel[i] = normalize(vec3(rand(), rand(), rand()));
 			}
-			initSphereMesh();
 		}
 
 		void initSphereMesh() {
@@ -222,19 +231,13 @@ class SPH {
 		}
 
 		void update() {
-			const float step = 0.001; // [seconds]
-			const float h = 1;
-			const float m = 1;
-			const float rho0 = 0;
-			const float k = 1;
-			const float mu = 1;
 			// calculate density and presure at each particle position
 			vector<float> density(particlePos.size(), 0);
 			vector<float> pressure(particlePos.size(), 0);
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
 				for(unsigned j = 0; j < particlePos.size(); ++j) {
-					density[i] += m*w(particlePos[i]-particlePos[j], h);
-					pressure[i] += k*(density[i]-rho0);
+					density[i] += M*w(particlePos[i]-particlePos[j], H);
+					pressure[i] += K*(density[i]-Rho0);
 				}
 				assert(density[i] != 0);
 			}
@@ -243,8 +246,8 @@ class SPH {
 				vec3 fPressure;
 				vec3 fViscosity;
 				for(unsigned j = 0; j < particlePos.size(); ++j) {
-					fPressure -= m*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], h);
-					fViscosity += (particleVel[j]-particleVel[i])*float(mu*m/density[j]*wViscosity2(particlePos[i]-particlePos[j], h));
+					fPressure -= M*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
+					fViscosity += (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
 				}
 				vec3 fGravity = -UP*9.81f*density[i];
 				vec3 f = fGravity + fViscosity + fPressure;
@@ -252,9 +255,9 @@ class SPH {
 				assert(length(a) > 0);
 				assert(length(f) > 0);
 				// update position using the current speed
-				particlePosTmp[i] = particlePos[i] + particleVel[i]*step;
+				particlePosTmp[i] = particlePos[i] + particleVel[i]*Step;
 				// update speed using the computed acceleration
-				particleVelTmp[i] = particleVel[i] + a*step;
+				particleVelTmp[i] = particleVel[i] + a*Step;
 			}
 			swap(particlePos, particlePosTmp);
 			swap(particleVel, particleVelTmp);
@@ -269,7 +272,6 @@ class SPH {
 					//if(surfaceNormal != vec3(0,-1,0)) // open-topped box
 					{
 						vec3 d = -particleVel[i]/velL;
-						assert(length(d) == 1);
 						particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
 					}
 				}
@@ -308,6 +310,10 @@ class Application {
 			material.ambientK = .5;
 			material.diffuseK = .5;
 			material.color = {0.3,0.3,1,1};
+		}
+
+		void reset() {
+			sph.reset();
 		}
 
 		void draw() {
@@ -352,7 +358,48 @@ static void HandleKeys(unsigned char key, int x, int y) {
   switch (key) {
     case 27:	// ESC
       exit(0);
+			break;
+		case 'r':
+			app->reset();
+			break;
+		case 's':
+			Step /= 2;
+			break;
+		case 'S':
+			Step *= 2;
+			break;
+		case 'h':
+			H /= 2;
+			break;
+		case 'H':
+			H *= 2;
+			break;
+		case 'm':
+			M /= 2;
+			break;
+		case 'M':
+			M *= 2;
+			break;
+		case 'k':
+			K /= 2;
+			break;
+		case 'K':
+			K *= 2;
+			break;
+		case 'u':
+			Mu /= 2;
+			break;
+		case 'U':
+			Mu *= 2;
+			break;
+			//Rho0
   }
+	cout << "step: " << Step << endl;
+	cout << "h: " << H << endl;
+	cout << "m: " << M << endl;
+	cout << "k: " << K << endl;
+	cout << "mu: " << Mu << endl;
+	cout << endl;
 }
 void idleFunc() {
 	app->update();
