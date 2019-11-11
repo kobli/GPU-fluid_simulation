@@ -13,13 +13,15 @@ using namespace glm;
 #define IMAGE_WIDTH 1024
 #define IMAGE_HEIGHT 1024
 
+const unsigned ParticleN = 100;
 const float ParticleRad = 0.03;
 float Step = 0.005; // [seconds]
-float H = 0.8;
-float M = 1;
+float H = 1.e-08;
+float M = 32;
 float Rho0 = 0;
-float K = 200;
-float Mu = 5;
+float K = 3.125;
+float Mu = 2;
+
 
 struct Material {
 	vec4 color;
@@ -295,7 +297,7 @@ class SPH {
 
 class Application {
 	public:
-		Application(): b{{1,1,1}}, sph{100, b} {
+		Application(): b{{1,1,1}}, sph{ParticleN, b} {
 			cameraPos = {-2,2,.5};
 			mat4x4 cameraView = lookAt(cameraPos, {.5,.5,.5}, UP);
 			mat4x4 projection = perspective(70., 1., 0.1, 1000.);
