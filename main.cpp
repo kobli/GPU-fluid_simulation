@@ -16,11 +16,11 @@ using namespace glm;
 const unsigned ParticleN = 100;
 const float ParticleRad = 0.03;
 float Step = 0.005; // [seconds]
-float H = 1.e-08;
+float H = 0.5;
 float M = 32;
-float Rho0 = 0;
-float K = 3.125;
-float Mu = 2;
+float Rho0 = 1;
+float K = 0.6;
+float Mu = 1024;
 
 
 struct Material {
@@ -239,23 +239,23 @@ class SPH {
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
 				for(unsigned j = 0; j < particlePos.size(); ++j) {
 					density[i] += M*w(particlePos[i]-particlePos[j], H);
-					pressure[i] += K*(density[i]-Rho0);
 				}
+				pressure[i] = K*(density[i]-Rho0);
 				assert(density[i] != 0);
 			}
 			// calculate forces acting upon its particle, its acceleration; update its position and speed
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
-				vec3 fPressure;
-				vec3 fViscosity;
+				vec3 fPressure = {};
+				vec3 fViscosity = {};
 				for(unsigned j = 0; j < particlePos.size(); ++j) {
-					fPressure -= M*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
+					fPressure += M*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
 					fViscosity += (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
 				}
 				vec3 fGravity = -UP*9.81f*density[i];
-				vec3 f = fGravity + fViscosity + fPressure;
+				vec3 f = fViscosity + fPressure + fGravity;
 				vec3 a = f/density[i];
-				assert(length(a) > 0);
-				assert(length(f) > 0);
+				assert(length(a) >= 0);
+				assert(length(f) >= 0);
 				// update position using the current speed
 				particlePosTmp[i] = particlePos[i] + particleVel[i]*Step;
 				// update speed using the computed acceleration
@@ -273,6 +273,7 @@ class SPH {
 				if(b.isOutside(particlePos[i], surfaceNormal) && velL > 0 && !isinf(velL)) {
 					//if(surfaceNormal != vec3(0,-1,0)) // open-topped box
 					{
+						particlePos[i] += -particleVel[i]*Step;
 						vec3 d = -particleVel[i]/velL;
 						particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
 					}
@@ -394,13 +395,19 @@ static void HandleKeys(unsigned char key, int x, int y) {
 		case 'U':
 			Mu *= 2;
 			break;
-			//Rho0
+		case 'o':
+			Rho0 /= 2;
+			break;
+		case 'O':
+			Rho0 *= 2;
+			break;
   }
 	cout << "step: " << Step << endl;
 	cout << "h: " << H << endl;
 	cout << "m: " << M << endl;
 	cout << "k: " << K << endl;
 	cout << "mu: " << Mu << endl;
+	cout << "rho0: " << Rho0 << endl;
 	cout << endl;
 }
 void idleFunc() {
