@@ -1,5 +1,6 @@
 #include <vector>
 #include <memory>
+#include <algorithm>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -13,14 +14,15 @@ using namespace glm;
 #define IMAGE_WIDTH 1024
 #define IMAGE_HEIGHT 1024
 
-const unsigned ParticleN = 100;
+const unsigned ParticleN = 1000;
 const float ParticleRad = 0.03;
 float Step = 0.005; // [seconds]
-float H = 0.5;
+float H = 0.1;
 float M = 32;
-float Rho0 = 1;
+float Rho0 = 0;
 float K = 0.6;
 float Mu = 1024;
+const unsigned SubdivisionN = 10;
 
 
 struct Material {
@@ -131,6 +133,16 @@ class Bounds {
 		GLuint vboLineIndices;
 };
 
+struct ParticleRecord {
+	unsigned particleID;
+	unsigned cellID;
+};
+
+struct CellRecord {
+	unsigned firstParticleID;
+	unsigned particleN;
+};
+
 class SPH {
 	public:
 		SPH(unsigned n, Bounds& _b): b{_b} {
@@ -140,6 +152,8 @@ class SPH {
 			particlePos.resize(n);
 			initSphereMesh();
 			reset();
+			cellRecords.resize(SubdivisionN*SubdivisionN*SubdivisionN);
+			particleRecords.resize(ParticleN);
 		}
 
 		void reset() {
@@ -233,12 +247,17 @@ class SPH {
 		}
 
 		void update() {
+			updateCellRecords();
 			// calculate density and presure at each particle position
-			vector<float> density(particlePos.size(), 0);
+			vector<float> density(particlePos.size(), M);
 			vector<float> pressure(particlePos.size(), 0);
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
-				for(unsigned j = 0; j < particlePos.size(); ++j) {
-					density[i] += M*w(particlePos[i]-particlePos[j], H);
+				vector<unsigned> neighbourCells = nnCells(particlePos[i]);
+				for(unsigned cellID : neighbourCells) {
+					CellRecord r = cellRecords[cellID];
+					for(unsigned j = r.firstParticleID; j < r.firstParticleID+r.particleN; ++j) {
+						density[i] += M*w(particlePos[i]-particlePos[j], H);
+					}
 				}
 				pressure[i] = K*(density[i]-Rho0);
 				assert(density[i] != 0);
@@ -247,9 +266,17 @@ class SPH {
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
 				vec3 fPressure = {};
 				vec3 fViscosity = {};
-				for(unsigned j = 0; j < particlePos.size(); ++j) {
-					fPressure += M*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
-					fViscosity += (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
+				vector<unsigned> neighbourCells = nnCells(particlePos[i]);
+				for(unsigned cellID : neighbourCells) {
+					CellRecord r = cellRecords[cellID];
+					for(unsigned j = r.firstParticleID; j < r.firstParticleID+r.particleN; ++j) {
+						vec3 fp = M*(pressure[i]+pressure[j])/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
+						vec3 fv = (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
+						assert(!isnan(length(fp)));
+						assert(!isnan(length(fv)));
+						fPressure += fp;
+						fViscosity += fv;
+					}
 				}
 				vec3 fGravity = -UP*9.81f*density[i];
 				vec3 f = fViscosity + fPressure + fGravity;
@@ -281,11 +308,75 @@ class SPH {
 			}
 		}
 
+		unsigned particlePosToCellID(const vec3& particlePos) {
+			vec3 c = (particlePos - b.min) / (b.max - b.min) * float(SubdivisionN);
+			return cellPosToID(c);
+		}
+
+		unsigned cellPosToID(const vec3& c) {
+			return unsigned(c.x)*SubdivisionN*SubdivisionN + unsigned(c.y)*SubdivisionN + unsigned(c.z);
+		}
+
+		vector<unsigned> nnCells(const vec3& particlePos) {
+			using std::max;
+			using std::min;
+			vector<unsigned> r;
+			r.reserve(3*3*3);
+			vec3 c = ((particlePos - b.min) / (b.max - b.min)) * float(SubdivisionN);
+			int cx = c.x;
+			int cy = c.y;
+			int cz = c.z;
+			const int maxC = int(SubdivisionN)-1;
+			for(int x = max(0, cx-1); x <= min(maxC, cx+1); ++x) {
+				for(int y = max(0, cy-1); y <= min(maxC, cy+1); ++y) {
+					for(int z = max(0, cz-1); z <= min(maxC, cz+1); ++z) {
+						r.push_back(cellPosToID(vec3(x,y,z)));
+					}
+				}
+			}
+			return r;
+		}
+
+		void updateCellRecords() {
+			for(CellRecord& r : cellRecords)
+				r.particleN = 0;
+			// for each particle: calculate cell coordinates -> hash
+			for(unsigned i = 0; i < ParticleN; ++i) {
+				particleRecords[i].particleID = i;
+				particleRecords[i].cellID = particlePosToCellID(particlePos[i]);
+			}
+			// sort particleRecords by cell_id (this will form clusters for each cell)
+			sort(particleRecords.begin(), particleRecords.end(), [](ParticleRecord& l, ParticleRecord& r){ return l.cellID < r.cellID; });
+			// for each cell_id_hash create cell_rec (first_particle_rec, particle_rec_n)
+			// reorder particle array according to particle_rec
+			unsigned cellID = particleRecords[0].cellID;
+			unsigned cellParticleN = 0;
+			cellRecords[cellID].firstParticleID = 0;
+			for(unsigned i = 0; i < ParticleN; ++i) {
+				ParticleRecord& r = particleRecords[i];
+				particlePosTmp[i] = particlePos[r.particleID];
+				particleVelTmp[i] = particleVel[r.particleID];
+				if(r.cellID != cellID) {
+					cellRecords[r.cellID].firstParticleID = i;
+					cellRecords[cellID].particleN = cellParticleN;
+					cellParticleN = 0;
+					cellID = r.cellID;
+				}
+				++cellParticleN;
+			}
+			cellRecords[cellID].particleN = cellParticleN;
+			swap(particlePos, particlePosTmp);
+			swap(particleVel, particleVelTmp);
+		}
+
 	private:
 		vector<vec3> particlePos;
 		vector<vec3> particleVel;
 		vector<vec3> particlePosTmp;
 		vector<vec3> particleVelTmp;
+
+		vector<CellRecord> cellRecords;
+		vector<ParticleRecord> particleRecords;
 
 		GLuint vao;
 		GLuint vbo;
