@@ -145,24 +145,30 @@ struct CellRecord {
 
 class SPH {
 	public:
-		SPH(unsigned n, Bounds& _b): b{_b} {
-			particleVelTmp.resize(n);
-			particlePosTmp.resize(n);
-			particleVel.resize(n,{});
-			particlePos.resize(n);
+		SPH(Bounds& _b): b{_b} {
 			initSphereMesh();
-			reset();
-			cellRecords.resize(SubdivisionN*SubdivisionN*SubdivisionN);
-			particleRecords.resize(ParticleN);
 		}
 
-		void reset() {
-			for(unsigned i = 0; i < particlePos.size(); ++i) {
-				particlePos[i] = vec3(0.5, 0.5, 0.5);
-				particleVel[i] = normalize(vec3(rand(), rand(), rand()));
-			}
+		void draw() {
+			glBindVertexArray(vao);
+
+			GLuint program;
+			glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&program);
+			mat4x4 transform = scale(identity<mat4x4>(), vec3(ParticleRad, ParticleRad, ParticleRad));
+			setUniform(program, transform, "Model");
+			setUniform(program, transpose(inverse(transform)), "ModelInvT");
+
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
+			glDrawElementsInstanced(GL_QUADS, indexN, GL_UNSIGNED_INT, NULL, ParticleN);
 		}
 
+	protected:
+		void bufferParticlePositions(const vector<vec3>& positions) {
+			glBindVertexArray(vao);
+			glBufferData(GL_ARRAY_BUFFER, ParticleN*sizeof(vec3), positions.data(), GL_DYNAMIC_DRAW);
+		}
+
+	private:
 		void initSphereMesh() {
 			const int lats = 40,
 						longs = 40;
@@ -230,20 +236,36 @@ class SPH {
 			glVertexAttribDivisor(2, 1);
 		}
 
-		void draw() {
-			glBindVertexArray(vao);
+	protected:
+		Bounds &b;
 
-			glBindBuffer(GL_ARRAY_BUFFER, vboParticlePos);
-			glBufferData(GL_ARRAY_BUFFER, particlePos.size()*sizeof(vec3), particlePos.data(), GL_DYNAMIC_DRAW);
+	private:
+		GLuint vao;
+		GLuint vbo;
+		GLuint vboNormals;
+		GLuint vboIndices;
+		GLuint vboParticlePos;
+		unsigned indexN;
+};
 
-			GLuint program;
-			glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&program);
-			mat4x4 transform = scale(identity<mat4x4>(), vec3(ParticleRad, ParticleRad, ParticleRad));
-			setUniform(program, transform, "Model");
-			setUniform(program, transpose(inverse(transform)), "ModelInvT");
+class SPHcpu: public SPH {
+	public:
+		SPHcpu(unsigned n, Bounds& _b): SPH{_b} {
+			particleVelTmp.resize(n);
+			particlePosTmp.resize(n);
+			particleVel.resize(n,{});
+			particlePos.resize(n);
+			reset();
+			cellRecords.resize(SubdivisionN*SubdivisionN*SubdivisionN);
+			particleRecords.resize(ParticleN);
+		}
 
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
-			glDrawElementsInstanced(GL_QUADS, indexN, GL_UNSIGNED_INT, NULL, particlePos.size());
+		void reset() {
+			for(unsigned i = 0; i < particlePos.size(); ++i) {
+				particlePos[i] = vec3(0.5, 0.5, 0.5);
+				particleVel[i] = normalize(vec3(rand(), rand(), rand()));
+			}
+			bufferParticlePositions(particlePos);
 		}
 
 		void update() {
@@ -291,6 +313,8 @@ class SPH {
 			swap(particlePos, particlePosTmp);
 			swap(particleVel, particleVelTmp);
 			collide();
+
+			bufferParticlePositions(particlePos);
 		}
 
 		void collide() {
@@ -377,14 +401,6 @@ class SPH {
 
 		vector<CellRecord> cellRecords;
 		vector<ParticleRecord> particleRecords;
-
-		GLuint vao;
-		GLuint vbo;
-		GLuint vboNormals;
-		GLuint vboIndices;
-		GLuint vboParticlePos;
-		unsigned indexN;
-		Bounds &b;
 };
 
 class Application {
@@ -439,7 +455,7 @@ class Application {
 		GLuint shader;
 		vec3 cameraPos;
 		mat4x4 camera;
-		SPH sph;
+		SPHcpu sph;
 		Material material;
 };
 unique_ptr<Application> app;
@@ -527,6 +543,7 @@ int main(int argc, char* argv[]) {
 				0,
 				&unusedIds,
 				true);
+		glEnable(GL_DEBUG_OUTPUT);
 	}
 	else
 		cout << "glDebugMessageCallback not available" << endl;
