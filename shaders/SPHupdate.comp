@@ -1,0 +1,30 @@
+#version 430 core
+#define M_PI 3.141592f
+layout (local_size_x = 1024) in;
+
+layout (std430, binding = 0) buffer ParticlePositions {
+	vec3 particlePos[];
+};
+
+layout (std430, binding = 1) buffer ParticlePositionsOut {
+	vec3 particlePosOut[];
+};
+
+layout (std430, binding = 2) buffer ParticleVelocities {
+	vec3 particleVel[];
+};
+
+layout (std430, binding = 3) buffer Densities {
+	float density[];
+};
+
+uniform float Step;
+uniform float H;
+uniform float M;
+uniform float Rho0;
+uniform float K;
+uniform float Mu;
+uniform uint SubdivisionN;
+
+void main(void) {
+}
