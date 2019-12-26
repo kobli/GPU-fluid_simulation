@@ -154,16 +154,11 @@ class SPH {
 			initSphereMesh();
 
 			glGenBuffers(1, &particlePositionBuff);
-			glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuff);
-			glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-			glEnableVertexAttribArray(2);
-			glVertexAttribDivisor(2, 1);
+			setParticlePositionAttrBuffer(3);
 		}
 
 		void draw() {
 			glBindVertexArray(vao);
-			glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuff);
-
 			GLuint program;
 			glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&program);
 			mat4x4 transform = scale(identity<mat4x4>(), vec3(ParticleRad, ParticleRad, ParticleRad));
@@ -174,14 +169,23 @@ class SPH {
 			glDrawElementsInstanced(GL_QUADS, indexN, GL_UNSIGNED_INT, NULL, ParticleN);
 		}
 
+		void setParticlePositionAttrBuffer(int numPositionComponents) {
+			glBindVertexArray(vao);
+			glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuff);
+			glVertexAttribPointer(2, numPositionComponents, GL_FLOAT, GL_FALSE, 0, NULL);
+			glEnableVertexAttribArray(2);
+			glVertexAttribDivisor(2, 1);
+		}
+
 		virtual void reset() = 0;
 		virtual void update() = 0;
 
 	protected:
-		void bufferData(GLuint buffer, const vector<vec3>& data, GLenum usage) {
+		template <typename T>
+		void bufferData(GLuint buffer, const vector<T>& data, GLenum usage) {
 			glBindVertexArray(vao);
 			glBindBuffer(GL_ARRAY_BUFFER, buffer);
-			glBufferData(GL_ARRAY_BUFFER, data.size()*sizeof(vec3), data.data(), usage);
+			glBufferData(GL_ARRAY_BUFFER, data.size()*sizeof(T), data.data(), usage);
 		}
 
 	private:
@@ -258,30 +262,31 @@ class SPH {
 class SPHgpu: public SPH {
 	public:
 		SPHgpu(unsigned /*n*/, Bounds& _b): SPH{_b} {
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particlePositionBuff);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particlePositionBuff);
 			updateProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHupdate.comp")});
 			densityProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHdensity.comp")});
 			glGenBuffers(1, &particlePositionBuffOut);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particlePositionBuffOut);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particlePositionBuffOut);
-			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(vec3), NULL, GL_DYNAMIC_COPY);
 			glGenBuffers(1, &particleVelocityBuff);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleVelocityBuff);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, particleVelocityBuff);
-			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(vec3), NULL, GL_DYNAMIC_COPY);
 			glGenBuffers(1, &densityBuff);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, densityBuff);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, densityBuff);
-			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(float), NULL, GL_DYNAMIC_COPY);
 			reset();
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, densityBuff);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(float), NULL, GL_DYNAMIC_COPY);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particlePositionBuffOut);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(vec4), NULL, GL_DYNAMIC_COPY);
+
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, densityBuff);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particlePositionBuff);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, particlePositionBuffOut);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleVelocityBuff);
+
+			setParticlePositionAttrBuffer(4);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		}
 
 		void reset() override {
-			vector<vec3> particlePos(ParticleN, vec3(0.5, 0.5, 0.5));
-			vector<vec3> particleVel(ParticleN);
-			for(vec3& v : particleVel)
-				v = normalize(vec3(rand(), rand(), rand()));
+			vector<vec4> particlePos(ParticleN, vec4(0.5, 0.5, 0.5, 0));
+			vector<vec4> particleVel(ParticleN);
+			for(vec4& v : particleVel)
+				v = normalize(vec4(rand(), rand(), rand(), 0));
 			bufferData(particlePositionBuff, particlePos, GL_DYNAMIC_COPY);
 			bufferData(particleVelocityBuff, particleVel, GL_DYNAMIC_COPY);
 		}
@@ -290,12 +295,23 @@ class SPHgpu: public SPH {
 			glUseProgram(densityProgram);
 			setConfigUniforms(densityProgram);
 			glDispatchCompute(ParticleN/localGroupSize, 1, 1);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			//vector<float> density(ParticleN);
+			//glGetNamedBufferSubData(densityBuff, 0, density.size()*sizeof(float), density.data());
 
 			glUseProgram(updateProgram);
 			setConfigUniforms(updateProgram);
 			glDispatchCompute(ParticleN/localGroupSize, 1, 1);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			//vector<vec4> pos(ParticleN);
+			//glGetNamedBufferSubData(particlePositionBuffOut, 0, pos.size()*sizeof(vec4), pos.data());
+			//vector<vec4> vel(ParticleN);
+			//glGetNamedBufferSubData(particleVelocityBuff, 0, vel.size()*sizeof(vec4), vel.data());
 
 			swap(particlePositionBuff, particlePositionBuffOut);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particlePositionBuff);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, particlePositionBuffOut);
+			setParticlePositionAttrBuffer(4);
 		}
 		
 		void setConfigUniforms(GLuint program) {
@@ -306,6 +322,8 @@ class SPHgpu: public SPH {
 			glUniform1f(glGetUniformLocation(program, "K"), K);
 			glUniform1f(glGetUniformLocation(program, "Mu"), Mu);
 			glUniform1ui(glGetUniformLocation(program, "SubdivisionN"), SubdivisionN);
+			glUniform3fv(glGetUniformLocation(program, "boundsMin"), 1, b.min.data.data);
+			glUniform3fv(glGetUniformLocation(program, "boundsMax"), 1, b.max.data.data);
 		}
 
 	private:

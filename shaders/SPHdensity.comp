@@ -2,12 +2,12 @@
 #define M_PI 3.141592f
 layout (local_size_x = 1024) in;
 
-layout (std430, binding = 0) buffer ParticlePositions {
-	vec3 particlePos[];
+layout (std430, binding = 0) buffer Densities {
+	float density[];
 };
 
-layout (std430, binding = 3) buffer Densities {
-	float density[];
+layout (std430, binding = 1) buffer ParticlePositions {
+	readonly vec3 particlePos[];
 };
 
 uniform float Step;
@@ -17,6 +17,8 @@ uniform float Rho0;
 uniform float K;
 uniform float Mu;
 uniform uint SubdivisionN;
+uniform vec3 boundsMin;
+uniform vec3 boundsMax;
 
 float w(vec3 r, float h) {
 	float rLen = length(r);
