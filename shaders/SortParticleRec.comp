@@ -1,0 +1,40 @@
+#version 430 core
+layout (local_size_x = 1024) in;
+
+struct ParticleRec {
+	uint cellID;
+	uint particleID;
+};
+
+layout (std430, binding = 4) buffer ParticleRecords {
+	ParticleRec particleRec[];
+};
+
+uniform uint blockLen; // number of subsequent elements in the array that are sorted the same way (ascending/descending)
+uniform uint seqLen; // portion of block within which the elements are being compared
+
+void main(void) {
+	uint n = particleRec.length();
+	uint seqLen2 = seqLen/2;
+	uint threadI = gl_GlobalInvocationID.x;
+	uint threadN = gl_NumWorkGroups.x*gl_WorkGroupSize.x;
+	uint ic = (n/threadN+1)/2+1;
+	for(int i = 0; i < ic; i++) {
+		uint ei = threadI + i*threadN;
+		uint i1 = ei%seqLen2 + (ei/seqLen2)*seqLen;
+		uint i2 = i1 + seqLen2;
+		// first seqLen elements should be ascending, next seqLen elements descending, ...
+		bool ascending = !bool((i1/blockLen)%2);
+		if(i2 < n) {
+			if((particleRec[i1].cellID > particleRec[i2].cellID) == ascending) {
+				// swap
+				ParticleRec tmp = particleRec[i1];
+				particleRec[i1] = particleRec[i2];
+				particleRec[i2] = tmp;
+			}
+		}
+	}
+}
+
+
+

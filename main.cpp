@@ -265,6 +265,7 @@ class SPHgpu: public SPH {
 			updateProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHupdate.comp")});
 			densityProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHdensity.comp")});
 			particleRecProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/ParticleRec.comp")});
+			sortParticleRecProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SortParticleRec.comp")});
 			glGenBuffers(1, &particlePositionBuffOut);
 			glGenBuffers(1, &particleVelocityBuff);
 			glGenBuffers(1, &densityBuff);
@@ -303,6 +304,19 @@ class SPHgpu: public SPH {
 			setConfigUniforms(particleRecProgram);
 			glDispatchCompute(ParticleN/localGroupSize, 1, 1); // one invocation per particle
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			//vector<ParticleRecord> particleRec(ParticleN);
+			//glGetNamedBufferSubData(particleRecBuffer, 0, particleRec.size()*sizeof(ParticleRecord), particleRec.data());
+			
+			// sort the records by cellID
+			glUseProgram(sortParticleRecProgram);
+			for(size_t l = 2; l < 2*ParticleN; l *= 2) {
+				for(size_t seqLen = l; seqLen > 1; seqLen /= 2) {
+					glUniform1ui(glGetUniformLocation(sortParticleRecProgram, "seqLen"), seqLen);
+					glUniform1ui(glGetUniformLocation(sortParticleRecProgram, "blockLen"), l);
+					glDispatchCompute(ParticleN/localGroupSize, 1, 1);
+					glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+				}
+			}
 			//vector<ParticleRecord> particleRec(ParticleN);
 			//glGetNamedBufferSubData(particleRecBuffer, 0, particleRec.size()*sizeof(ParticleRecord), particleRec.data());
 
@@ -350,6 +364,7 @@ class SPHgpu: public SPH {
 		GLuint updateProgram;
 		GLuint densityProgram;
 		GLuint particleRecProgram;
+		GLuint sortParticleRecProgram;
 };
 
 class SPHcpu: public SPH {
