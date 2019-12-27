@@ -266,23 +266,28 @@ class SPHgpu: public SPH {
 			densityProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHdensity.comp")});
 			particleRecProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/ParticleRec.comp")});
 			sortParticleRecProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SortParticleRec.comp")});
+			cellRecProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/CellRec.comp")});
 			glGenBuffers(1, &particlePositionBuffOut);
 			glGenBuffers(1, &particleVelocityBuff);
 			glGenBuffers(1, &densityBuff);
 			glGenBuffers(1, &particleRecBuffer);
+			glGenBuffers(1, &cellRecBuffer);
 			reset();
 			glBindBuffer(GL_SHADER_STORAGE_BUFFER, densityBuff);
 			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(float), NULL, GL_DYNAMIC_COPY);
 			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particlePositionBuffOut);
 			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(vec4), NULL, GL_DYNAMIC_COPY);
 			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleRecBuffer);
-			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(unsigned)*2, NULL, GL_DYNAMIC_COPY);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, ParticleN*sizeof(ParticleRecord), NULL, GL_DYNAMIC_COPY);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, cellRecBuffer);
+			glBufferData(GL_SHADER_STORAGE_BUFFER, SubdivisionN*SubdivisionN*SubdivisionN*sizeof(CellRecord), NULL, GL_DYNAMIC_COPY);
 
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, densityBuff);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particlePositionBuff);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, particlePositionBuffOut);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleVelocityBuff);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, particleRecBuffer);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, cellRecBuffer);
 
 			setParticlePositionAttrBuffer(4);
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -319,6 +324,13 @@ class SPHgpu: public SPH {
 			}
 			//vector<ParticleRecord> particleRec(ParticleN);
 			//glGetNamedBufferSubData(particleRecBuffer, 0, particleRec.size()*sizeof(ParticleRecord), particleRec.data());
+			
+			// update cell records (first_particle_rec, particle_rec_n)
+			glUseProgram(cellRecProgram);
+			glDispatchCompute(SubdivisionN*SubdivisionN*SubdivisionN/localGroupSize+1, 1, 1); // one invocation per cell 
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+			//vector<CellRecord> cellRec(SubdivisionN*SubdivisionN*SubdivisionN);
+			//glGetNamedBufferSubData(cellRecBuffer, 0, cellRec.size()*sizeof(CellRecord), cellRec.data());
 
 			// compute density at each particle's location
 			glUseProgram(densityProgram);
@@ -361,10 +373,12 @@ class SPHgpu: public SPH {
 		GLuint particlePositionBuffOut;
 		GLuint densityBuff;
 		GLuint particleRecBuffer;
+		GLuint cellRecBuffer;
 		GLuint updateProgram;
 		GLuint densityProgram;
 		GLuint particleRecProgram;
 		GLuint sortParticleRecProgram;
+		GLuint cellRecProgram;
 };
 
 class SPHcpu: public SPH {
