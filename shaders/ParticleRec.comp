@@ -1,0 +1,43 @@
+#version 430 core
+#define M_PI 3.141592f
+layout (local_size_x = 1024) in;
+
+layout (std430, binding = 1) buffer ParticlePositions {
+	readonly vec3 particlePos[];
+};
+
+struct ParticleRec {
+	uint cellID;
+	uint particleID;
+};
+
+layout (std430, binding = 4) buffer ParticleRecords {
+	ParticleRec particleRec[];
+};
+
+uniform float Step;
+uniform float H;
+uniform float M;
+uniform float Rho0;
+uniform float K;
+uniform float Mu;
+uniform uint SubdivisionN;
+uniform vec3 boundsMin;
+uniform vec3 boundsMax;
+
+uint cellPosToID(vec3 c) {
+	return uint(c.x)*SubdivisionN*SubdivisionN + uint(c.y)*SubdivisionN + uint(c.z);
+}
+
+uint particlePosToCellID(vec3 particlePos) {
+	vec3 c = (particlePos - boundsMin) / (boundsMax - boundsMin) * float(SubdivisionN);
+	return cellPosToID(c);
+}
+
+void main(void) {
+	uint i = gl_GlobalInvocationID.x;
+	particleRec[i].cellID = particlePosToCellID(particlePos[i]);
+	particleRec[i].particleID = i;
+}
+
+
