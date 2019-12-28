@@ -15,7 +15,7 @@ using namespace glm;
 #define IMAGE_HEIGHT 1024
 
 const unsigned localGroupSize = 1024;
-const unsigned ParticleN = localGroupSize*4;
+const unsigned ParticleN = localGroupSize*4; // must be power of two
 const float ParticleRad = 0.02;
 
 float Step = 0.005; // [seconds]
@@ -24,7 +24,7 @@ float M = 32;
 float Rho0 = 1;
 float K = 2.4;
 float Mu = 2048;
-const unsigned SubdivisionN = 10;
+const unsigned SubdivisionN = 8; // must be power of two
 const vec3 BoxSize{2,2,2};
 
 
@@ -35,6 +35,10 @@ struct Material {
 	float specularK;
 	float shininess;
 };
+
+float frand() {
+	return float(rand())/RAND_MAX;
+}
 
 double w(vec3 r, double h) {
 	double rLen = length(r);
@@ -300,8 +304,10 @@ class SPHgpu: public SPH {
 		}
 
 		void reset() override {
-			vector<vec4> particlePos(ParticleN, vec4(0.5, 0.5, 0.5, 0));
+			vector<vec4> particlePos(ParticleN);
 			vector<vec4> particleVel(ParticleN);
+			for(vec4& p : particlePos)
+				p = vec4(b.min + (b.max-b.min)*vec3(frand(), frand(), frand()), 0);
 			for(vec4& v : particleVel)
 				v = normalize(vec4(rand(), rand(), rand(), 0));
 			bufferData(particlePositionBuff, particlePos, GL_DYNAMIC_COPY);
@@ -413,7 +419,7 @@ class SPHcpu: public SPH {
 
 		void reset() override {
 			for(unsigned i = 0; i < particlePos.size(); ++i) {
-				particlePos[i] = vec3(0.5, 0.5, 0.5);
+				particlePos[i] = b.min + (b.max-b.min)*vec3(frand(), frand(), frand());
 				particleVel[i] = normalize(vec3(rand(), rand(), rand()));
 			}
 			bufferData(particlePositionBuff, particlePos, GL_DYNAMIC_DRAW);
