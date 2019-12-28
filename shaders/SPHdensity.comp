@@ -2,12 +2,21 @@
 #define M_PI 3.141592f
 layout (local_size_x = 1024) in;
 
+struct CellRec {
+	uint firstParticleID;
+	uint particleN;
+};
+
 layout (std430, binding = 0) buffer Densities {
 	float density[];
 };
 
 layout (std430, binding = 1) buffer ParticlePositions {
 	readonly vec3 particlePos[];
+};
+
+layout (std430, binding = 5) buffer CellRecords {
+	CellRec cellRec[];
 };
 
 uniform float Step;
@@ -27,11 +36,38 @@ float w(vec3 r, float h) {
 	return 0;
 }
 
+uint cellPosToID(uvec3 c) {
+	return c.x*SubdivisionN*SubdivisionN + c.y*SubdivisionN + c.z;
+}
+
+uint nnCells(vec3 p, out uint neighbourCells[27]) {
+	vec3 c = ((p - boundsMin) / (boundsMax - boundsMin)) * float(SubdivisionN);
+	int cx = int(c.x);
+	int cy = int(c.y);
+	int cz = int(c.z);
+	const int maxC = int(SubdivisionN)-1;
+	uint neighbourCellN = 0;
+	for(int x = max(0, cx-1); x <= min(maxC, cx+1); ++x) {
+		for(int y = max(0, cy-1); y <= min(maxC, cy+1); ++y) {
+			for(int z = max(0, cz-1); z <= min(maxC, cz+1); ++z) {
+				neighbourCells[neighbourCellN] = cellPosToID(uvec3(x,y,z));
+				++neighbourCellN;
+			}
+		}
+	}
+	return neighbourCellN;
+}
+
 void main(void) {
 	uint i = gl_GlobalInvocationID.x;
 	density[i] = M;
-	for(uint j = 0; j < particlePos.length(); ++j) {
-		density[i] += M*w(particlePos[i]-particlePos[j], H);
+	uint neighbourCells[27];
+	uint neighbourCellN = nnCells(particlePos[i], neighbourCells);
+	for(uint neighbourI = 0; neighbourI < neighbourCellN; ++neighbourI) {
+		CellRec r = cellRec[neighbourCells[neighbourI]];
+		for(uint j = r.firstParticleID; j < r.firstParticleID+r.particleN; ++j) {
+			density[i] += M*w(particlePos[i]-particlePos[j], H);
+		}
 	}
 }
 

@@ -3,6 +3,11 @@
 #define UP vec3(0,1,0)
 layout (local_size_x = 1024) in;
 
+struct CellRec {
+	uint firstParticleID;
+	uint particleN;
+};
+
 layout (std430, binding = 0) buffer Densities {
 	float density[];
 };
@@ -17,6 +22,10 @@ layout (std430, binding = 2) buffer ParticlePositionsOut {
 
 layout (std430, binding = 3) buffer ParticleVelocities {
 	vec3 particleVel[];
+};
+
+layout (std430, binding = 5) buffer CellRecords {
+	CellRec cellRec[];
 };
 
 uniform float Step;
@@ -72,15 +81,42 @@ void collide(uint i) {
 	}
 }
 
+uint cellPosToID(uvec3 c) {
+	return c.x*SubdivisionN*SubdivisionN + c.y*SubdivisionN + c.z;
+}
+
+uint nnCells(vec3 p, out uint neighbourCells[27]) {
+	vec3 c = ((p - boundsMin) / (boundsMax - boundsMin)) * float(SubdivisionN);
+	int cx = int(c.x);
+	int cy = int(c.y);
+	int cz = int(c.z);
+	const int maxC = int(SubdivisionN)-1;
+	uint neighbourCellN = 0;
+	for(int x = max(0, cx-1); x <= min(maxC, cx+1); ++x) {
+		for(int y = max(0, cy-1); y <= min(maxC, cy+1); ++y) {
+			for(int z = max(0, cz-1); z <= min(maxC, cz+1); ++z) {
+				neighbourCells[neighbourCellN] = cellPosToID(uvec3(x,y,z));
+				++neighbourCellN;
+			}
+		}
+	}
+	return neighbourCellN;
+}
+
 void main(void) {
 	uint i = gl_GlobalInvocationID.x;
 	float pressurei = K*(density[i]-Rho0);
 	vec3 fPressure = vec3(0,0,0);
 	vec3 fViscosity = vec3(0,0,0);
-	for(uint j = 0; j < particlePos.length(); ++j) {
-		float pressurej = K*(density[j]-Rho0);
-		fPressure += M*(pressurei+pressurej)/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
-		fViscosity += (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
+	uint neighbourCells[27];
+	uint neighbourCellN = nnCells(particlePos[i], neighbourCells);
+	for(uint neighbourI = 0; neighbourI < neighbourCellN; ++neighbourI) {
+		CellRec r = cellRec[neighbourCells[neighbourI]];
+		for(uint j = r.firstParticleID; j < r.firstParticleID+r.particleN; ++j) {
+			float pressurej = K*(density[j]-Rho0);
+			fPressure += M*(pressurei+pressurej)/(2*density[j])*wPresure1(particlePos[i]-particlePos[j], H);
+			fViscosity += (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
+		}
 	}
 	vec3 fGravity = -UP*9.81f*density[i];
 	vec3 f = fViscosity + fPressure + fGravity;

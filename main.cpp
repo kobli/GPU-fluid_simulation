@@ -25,6 +25,7 @@ float Rho0 = 0;
 float K = 0.6;
 float Mu = 1024;
 const unsigned SubdivisionN = 10;
+const vec3 BoxSize{1,1,1};
 
 
 struct Material {
@@ -554,7 +555,7 @@ class SPHcpu: public SPH {
 
 class Application {
 	public:
-		Application(): b{{1,1,1}}, sph{ParticleN, b} {
+		Application(): b{BoxSize}, sph{ParticleN, b} {
 			cameraPos = {-2,2,.5};
 			mat4x4 cameraView = lookAt(cameraPos, {.5,.5,.5}, UP);
 			mat4x4 projection = perspective(70., 1., 0.1, 1000.);
