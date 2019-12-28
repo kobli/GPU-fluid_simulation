@@ -124,6 +124,6 @@ void main(void) {
 	// update position using the current speed
 	particlePosOut[i] = particlePos[i] + particleVel[i]*Step;
 	// update speed using the computed acceleration
-	particleVel[i] += a*Step;
 	collide(i);
+	particleVel[i] += a*Step;
 }
