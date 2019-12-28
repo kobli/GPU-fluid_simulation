@@ -108,6 +108,7 @@ void main(void) {
 			fViscosity += (particleVel[j]-particleVel[i])*float(Mu*M/density[j]*wViscosity2(particlePos[i]-particlePos[j], H));
 		}
 	}
+	// sum up the forces, calculate acceleration
 	vec3 fGravity = -UP*9.81f*density[i];
 	vec3 f = fViscosity + fPressure + fGravity;
 	vec3 a = f/density[i];

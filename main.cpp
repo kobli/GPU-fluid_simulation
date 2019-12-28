@@ -15,17 +15,17 @@ using namespace glm;
 #define IMAGE_HEIGHT 1024
 
 const unsigned localGroupSize = 1024;
-const unsigned ParticleN = localGroupSize*1;
-const float ParticleRad = 0.03;
+const unsigned ParticleN = localGroupSize*4;
+const float ParticleRad = 0.02;
 
 float Step = 0.005; // [seconds]
 float H = 0.1;
 float M = 32;
-float Rho0 = 0;
-float K = 0.6;
-float Mu = 1024;
+float Rho0 = 1;
+float K = 2.4;
+float Mu = 2048;
 const unsigned SubdivisionN = 10;
-const vec3 BoxSize{1,1,1};
+const vec3 BoxSize{2,2,2};
 
 
 struct Material {
@@ -557,7 +557,7 @@ class Application {
 	public:
 		Application(): b{BoxSize}, sph{ParticleN, b} {
 			cameraPos = {-2,2,.5};
-			mat4x4 cameraView = lookAt(cameraPos, {.5,.5,.5}, UP);
+			mat4x4 cameraView = lookAt(cameraPos, BoxSize/2.f, UP);
 			mat4x4 projection = perspective(70., 1., 0.1, 1000.);
 			camera = projection*cameraView;
 			shader = loadShaderProgram({
