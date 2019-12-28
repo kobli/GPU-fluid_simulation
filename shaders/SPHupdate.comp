@@ -71,16 +71,6 @@ bool pointOutsideBounds(vec3 p, vec3 bmin, vec3 bmax, out vec3 n) {
 	return r;
 }
 
-void collide(uint i) {
-	vec3 surfaceNormal;
-	float velL = length(particleVel[i]);
-	if(pointOutsideBounds(particlePosOut[i], boundsMin, boundsMax, surfaceNormal) && velL > 0 && !isinf(velL)) {
-		particlePosOut[i] += -particleVel[i]*Step;
-		vec3 d = -particleVel[i]/velL;
-		particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
-	}
-}
-
 uint cellPosToID(uvec3 c) {
 	return c.x*SubdivisionN*SubdivisionN + c.y*SubdivisionN + c.z;
 }
@@ -124,6 +114,13 @@ void main(void) {
 	// update position using the current speed
 	particlePosOut[i] = particlePos[i] + particleVel[i]*Step;
 	// update speed using the computed acceleration
-	collide(i);
 	particleVel[i] += a*Step;
+	// collision check
+	vec3 surfaceNormal;
+	float velL = length(particleVel[i]);
+	if(pointOutsideBounds(particlePosOut[i], boundsMin, boundsMax, surfaceNormal) && velL > 0 && !isinf(velL)) {
+		particlePosOut[i] = particlePos[i];
+		vec3 d = -particleVel[i]/velL;
+		particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
+	}
 }
