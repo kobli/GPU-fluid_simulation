@@ -635,9 +635,8 @@ class Application {
 
 		void update() {
 			sph.update();
-			if(frameTimeN == 200) {
-				frameTimeN = 10;
-			}
+			if(frameTimeN == 20)
+				frameTimeN = 4;
 			avgFrameTime = (avgFrameTime*frameTimeN + sph.frameTime) / (frameTimeN + 1);
 			frameTimeN++;
 		}
