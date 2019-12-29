@@ -1,6 +1,9 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -561,7 +564,7 @@ class SPHcpu: public SPH {
 
 class Application {
 	public:
-		Application(): b{BoxSize}, sph{ParticleN, b} {
+		Application(): b{BoxSize}, sph{ParticleN, b}, avgFrameTime{0}, frameTimeN{0} {
 			cameraPos = {-2,2,.5};
 			mat4x4 cameraView = lookAt(cameraPos, BoxSize/2.f, UP);
 			mat4x4 projection = perspective(70., 1., 0.1, 1000.);
@@ -604,7 +607,15 @@ class Application {
 		}
 
 		void update() {
+			using namespace chrono;
+			steady_clock::time_point begin = steady_clock::now();
 			sph.update();
+			steady_clock::time_point end = steady_clock::now();
+			float frameTime = duration_cast<microseconds>(end - begin).count()/float(1000); //ms
+			if(frameTimeN != unsigned(-1)) {
+				avgFrameTime = (avgFrameTime*frameTimeN + frameTime) / (frameTimeN + 1);
+				frameTimeN++;
+			}
 		}
 
 		Bounds b;
@@ -613,6 +624,9 @@ class Application {
 		mat4x4 camera;
 		SPHgpu sph;
 		Material material;
+
+		float avgFrameTime;
+		unsigned frameTimeN;
 };
 unique_ptr<Application> app;
 
@@ -675,6 +689,9 @@ static void HandleKeys(unsigned char key, int x, int y) {
 }
 void idleFunc() {
 	app->update();
+	ostringstream title;
+	title << "SPH demo - avg frame time: " << std::fixed << setw(8) << setprecision(2) << app->avgFrameTime << " [ms]";
+	glutSetWindowTitle(title.str().c_str());
   glutPostRedisplay();
 }
 
