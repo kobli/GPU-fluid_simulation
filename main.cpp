@@ -635,10 +635,11 @@ class Application {
 
 		void update() {
 			sph.update();
-			if(frameTimeN != unsigned(-1)) {
-				avgFrameTime = (avgFrameTime*frameTimeN + sph.frameTime) / (frameTimeN + 1);
-				frameTimeN++;
+			if(frameTimeN == 200) {
+				frameTimeN = 10;
 			}
+			avgFrameTime = (avgFrameTime*frameTimeN + sph.frameTime) / (frameTimeN + 1);
+			frameTimeN++;
 		}
 
 		Bounds b;
