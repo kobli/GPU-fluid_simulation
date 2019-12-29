@@ -18,7 +18,7 @@ using namespace glm;
 #define IMAGE_HEIGHT 1024
 
 const unsigned localGroupSize = 1024;
-const unsigned ParticleN = localGroupSize*4; // must be power of two
+const unsigned ParticleN = localGroupSize*8; // must be power of two
 const float ParticleRad = 0.02;
 
 float Step = 0.005; // [seconds]
@@ -155,7 +155,7 @@ struct CellRecord {
 
 class SPH {
 	public:
-		SPH(Bounds& _b): b{_b} {
+		SPH(Bounds& _b): frameTime{0}, b{_b} {
 			glGenVertexArrays(1, &vao);
 			glBindVertexArray(vao);
 
@@ -255,6 +255,9 @@ class SPH {
 			indexN = indices.size();
 		}
 
+	public:
+		float frameTime;
+
 	protected:
 		GLuint particlePositionBuff;
 		Bounds &b;
@@ -270,6 +273,7 @@ class SPH {
 class SPHgpu: public SPH {
 	public:
 		SPHgpu(unsigned /*n*/, Bounds& _b): SPH{_b} {
+			glGenQueries(1, &queryID);
 			updateProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHupdate.comp")});
 			densityProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHdensity.comp")});
 			particleRecProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/ParticleRec.comp")});
@@ -318,6 +322,27 @@ class SPHgpu: public SPH {
 		}
 
 		void update() override {
+			GLuint64 qr = GL_FALSE;
+			if(queryActive)
+				glGetQueryObjectui64v(queryID, GL_QUERY_RESULT_AVAILABLE, &qr);
+			bool queryResultReady = (qr == GL_TRUE);
+			if(queryResultReady) {
+				glGetQueryObjectui64v(queryID, GL_QUERY_RESULT, &qr);
+				frameTime = double(qr)/1000/1000;
+				queryActive = false;
+			}
+			if(!queryActive) {
+				glBeginQuery(GL_TIME_ELAPSED, queryID);
+				step();
+				glEndQuery(GL_TIME_ELAPSED);
+				queryActive = true;
+			}
+			else
+				step();
+		}
+
+	private:
+		void step() {
 			// prepare NN data structure (uniform grid)
 			// calculate particle record for each particle (particle ID, cell ID)
 			glUseProgram(particleRecProgram);
@@ -395,6 +420,8 @@ class SPHgpu: public SPH {
 		}
 
 	private:
+		GLuint queryID;
+		bool queryActive;
 		GLuint particleVelocityBuff;
 		GLuint particleVelocityBuff2;
 		GLuint particlePositionBuffOut;
@@ -607,13 +634,9 @@ class Application {
 		}
 
 		void update() {
-			using namespace chrono;
-			steady_clock::time_point begin = steady_clock::now();
 			sph.update();
-			steady_clock::time_point end = steady_clock::now();
-			float frameTime = duration_cast<microseconds>(end - begin).count()/float(1000); //ms
 			if(frameTimeN != unsigned(-1)) {
-				avgFrameTime = (avgFrameTime*frameTimeN + frameTime) / (frameTimeN + 1);
+				avgFrameTime = (avgFrameTime*frameTimeN + sph.frameTime) / (frameTimeN + 1);
 				frameTimeN++;
 			}
 		}
