@@ -367,7 +367,7 @@ class SPHgpu: public SPH {
 			
 			// update cell records (first_particle_rec, particle_rec_n)
 			glUseProgram(cellRecProgram);
-			glDispatchCompute(SubdivisionN*SubdivisionN*SubdivisionN/localGroupSize+1, 1, 1); // one invocation per cell 
+			glDispatchCompute(1, 1, 1);
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 			//vector<CellRecord> cellRec(SubdivisionN*SubdivisionN*SubdivisionN);
 			//glGetNamedBufferSubData(cellRecBuffer, 0, cellRec.size()*sizeof(CellRecord), cellRec.data());
