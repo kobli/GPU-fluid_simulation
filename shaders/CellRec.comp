@@ -20,6 +20,8 @@ layout (std430, binding = 5) buffer CellRecords {
 };
 
 void main(void) {
+	for(uint i = 0; i < cellRec.length(); ++i)
+		cellRec[i].particleN = 0;
 	uint cellID = particleRec[0].cellID;
 	uint cellParticleN = 0;
 	cellRec[cellID].firstParticleID = 0;
