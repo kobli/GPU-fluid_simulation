@@ -377,6 +377,7 @@ Fluids are very common in various real-world environments, therefore they should
 %\end{figure}
 
 \section{Smoothed particle hydrodynamics}
+Smoothed particle hydrodynamics is an approach introduced by Monaghan in \cite{Articles:Monaghan}.
 Each particle $i$ has constant mass $m_{i}$ and rest density $\rho_{0i}$ assigned according to the type of liquid. The particles form a density field
 
 \begin{equation}
@@ -401,7 +402,7 @@ where
 	\mathbf{f}_{i}^{pressure} = -\sum_{j}m_j\frac{p(\mathbf{r}_i)+p(\mathbf{r}_j)}{2\rho(\mathbf{r}_j)} \mathbf{W}_p(\mathbf{r}_i-\mathbf{r}_j, h)
 \end{equation}
 
-and $\mathbf{f}_{i}^{external}$ may be forces from other objects interacting with the fluid. $\mu$ is the viscosity coefficient and 
+and $\mathbf{f}_{i}^{external}$ may be collision forces from other objects, gravity, or forces caused by user interaction. $\mu$ is the viscosity coefficient and 
 
 \begin{equation}
 	p(\mathbf{r}_i) = k(\rho(\mathbf{r}_i)-\rho_{0i}),
@@ -427,7 +428,29 @@ $\mathbf{a}_i$ is acceleration of the particle computed as
 
 Morris \cite{Articles:Morris} proposed to add a surface tension force, which should help to maintain sharp interfaces between fluids.
 
-TODO kernel
+\subsection{Smoothing kernels}
+Müller\cite{Articles:Muller} proposed the following kernel to be used for computation of density 
+
+\begin{equation}
+	W_d(\mathbf{r},h) = \frac{315}{64\pi h^9}
+	\left\{
+		\begin{array}{ll}
+			(h^2-r^2)^3 	& 0\leq r \leq h\\
+			0 						& otherwise
+		\end{array}
+		\right.
+\end{equation}
+
+Its advantage is that there is no square root in the distance computation. The next kernel is used for presure computation
+
+\begin{equation}
+	\mathbf{W}_p(\mathbf{r},h) = \frac{\mathbf{r}}{|\mathbf{r}|} \frac{45}{\pi h^6} (h-|\mathbf{r}|)^2
+\end{equation}
+
+and the last kernel -- for computation of viscosity
+\begin{equation}
+	W_v(\mathbf{r},h) = \frac{45}{\pi h^6} (h-|\mathbf{r}|)
+\end{equation}
 
 \section{Nearest neighbour search}
 
@@ -596,10 +619,12 @@ evaluate results, conclusion, possible improvements
 %H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
 %  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
 
-\bibitem{Articles:Shell}
-Michael Shell: \emph{How to Use the IEEEtran \LaTeX Class}. 2007.
+\bibitem{Articles:Monaghan}
+	Monaghan, J.J.: \emph{Smoothed Particle Hydrodynamics}. 1992.
+\bibitem{Articles:Muller}
+	Müller et al.: \emph{Particle-Based Fluid Simulation for Interactive Applications}
 \bibitem{Articles:Morris}
-Morris, J.P.: \emph{Simulating surface tension with smoothed particle hydrodynamics}. 2000.
+	Morris, J.P.: \emph{Simulating surface tension with smoothed particle hydrodynamics}. 2000.
 
 \end{thebibliography}
 
