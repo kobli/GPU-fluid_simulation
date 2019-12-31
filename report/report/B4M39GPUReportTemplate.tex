@@ -285,6 +285,10 @@
 % specifically asked to do so by the journal or conference you plan to submit to,
 % of course. )
 
+
+\newcounter{kernelCounter}
+
+
 \def\IEEEkeywordsname{Keywords}
 % correct bad hyphenation here
 \hyphenation{}
@@ -507,15 +511,18 @@ The cell index is then calculated from cell coordinates as
 \end{equation}
 
 \section{Parallelization}
+\label{sec:parallelization}
 At the beginning of every frame, the auxilliary data structure must be built. It consists of several steps, which need to be done one after another -- without overlap.
 \begin{enumerate}
 	\item Create particle records. (parallel)
 	\item Sort particle records. (parallel -- using bitonic sort -- see below)
 	\item Create cell records. (single thread on GPU)
 	\item Reorder particle positions and velocities. (parallel -- different source and destination buffers)
+	\setcounter{kernelCounter}{\value{enumi}}
 \end{enumerate}
 Then the particle positions and velocities can be updated in the following non-overlapping steps.
 \begin{enumerate}
+	\setcounter{enumi}{\value{kernelCounter}}
 	\item Compute density at position of each particle. (parallel)
 	\item Update particle positions and velocities. (parallel)
 \end{enumerate}
@@ -540,7 +547,7 @@ Bitonic sort is a parallel sorting algorithm based on merging two sorted sequenc
 \end{lstlisting} 
 
 \section{Implementation details -- compute shaders}
-kernel sequence, grid sizes (and reasoning), shm
+The sequence of kernels is described in section \ref{sec:parallelization}. It is necessary to ensure memory coherenecy between dispatches by using a memoryBarrier. All the steps which are marked "(parallel)" use the same number of threads (shader invocations) as there are particles. Sorting requires $log^2(particleN)$ iterations, same number of threads. Creating cell records needs single iteration over the sorted cell records of one thread. Shared memory is currently not used, but the steps 5) and 6) could be changed so they could potentially benefit from using it. See \ref{sec:improvements} for possible improvements.
 
 \section{User interface}
 
@@ -572,6 +579,7 @@ The measured results were obtained on the following configurations:
 
 
 \section{Conclusion}
+\label{sec:improvements}
 evaluate results, conclusion, possible improvements
 
 
