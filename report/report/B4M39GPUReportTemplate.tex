@@ -669,6 +669,9 @@ The measured results in table \ref{table:results} were obtained on the configura
 
 \section{Conclusion}
 \label{sec:improvements}
+better GPU impl:
+	- cellRec - 1 thread per particle, store firstParticleID if prevParticleRec.cellID is different; second pass: store cellID.N = particleN-cellID.first if nextParticleRec.cellID differs
+	- density,update - every workGroup gets a cellRecord to process (small workgroup 32 or 64 threads), copy data into SHM only if there are particles in the cell
 evaluate results, conclusion, possible improvements
 
 
