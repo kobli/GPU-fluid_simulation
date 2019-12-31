@@ -577,31 +577,94 @@ The application can be controlled by keys listed in table \ref{table:controls}. 
 	\label{table:controls}
 \end{table}
 
+\section{Parameter choice and testing}
+The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. Particles occasionally get stuck on the boundary due to TODO. Also because the step size is constant and relatively large, the particle never stop moving. The figure \ref{fig:screen} shows a screenshot of the application.
+
 \begin{figure}[!h]
 \centering
-\includegraphics[width=3in]{screenShotOne}
-\caption{Screenshot from the application for TODO particles.}
-\label{fig:screenOne}
+\includegraphics[width=1\linewidth]{screenshot}
+\caption{Screenshot from the application for 16384 particles.}
+\label{fig:screen}
 \end{figure}
 
-\section{Parameter choice and testing}
-The SPH method has several parameters. The currently used setting has been determined empirically: TODO. The application was tested visually with these parameters for varying number of particles and NN grid resolution. Particles occasionally get stuck on the boundary due to TODO. Also because the step size is constant and relatively large, the particle never stop moving.
+\begin{table}[h]
+	\normalsize
+	\centering
+	\begin{tabular}{|l|l|}
+		\hline
+		\textbf{Parameter} & \textbf{Value} \\
+		\hline
+		\hline
+		Simulation step 	& 0.005 seconds \\
+		Kernel radius 	& 0.1 \\
+		Particle mass 	& 32 \\
+		Pressure coefficient	& 2.4 \\ 
+		Viscosity coefficient 	& 2048 \\
+		\hline
+	\end{tabular}
+	\caption{Current simulation parameters.}
+	\label{table:parameters}
+\end{table}
+
 
 \section{Performance}
-table of results for both configurations
+TODO table of results for both configurations
 commentary (not / as expected, why)
 
-The measured results were obtained on the following configurations:
+The measured results in table \ref{table:results} were obtained on the configurations listed in table \ref{table:pc1} and \ref{table:pc2}.
+\begin{table}[!htbp]
+	\begin{tabular}{l}
+		\hline
+		\textbf{PC-1} \\
+		\hline
+		Debian 11 GNU/Linux 4.19.0-6-amd64 \\
+		Intel(R) Core(TM) i5-3230M CPU @ 2.60GHz \\
+		6 GB RAM \\
+		NVIDIA GeForce GT 750M (GK107M) \\
+		OpenGL Driver version 4.6.0 \\
+		NVIDIA proprietary driver version 418.74 \\
+		384 CUDA cores, 2 GB VRAM \\
+	\end{tabular}
+	\caption{PC-1 used to measure the results.}
+	\label{table:pc1}
+\end{table}
 
-\begin{itemize}
-	\item{Debian 11 GNU/Linux 4.19.0-6-amd64}
-	\item{Intel(R) Core(TM) i5-3230M CPU @ 2.60GHz}
-	\item{6.0 GB RAM}
-	\item{NVIDIA GeForce GT 750M (GK107M)}
-	\item{OpenGL Driver version 4.6.0}
-	\item{NVIDIA proprietary driver version 418.74}
-	\item{384 CUDA cores, 2 GB VRAM}
-\end{itemize}
+\begin{table}[!htbp]
+\begin{tabular}{l}
+\hline
+\textbf{PC-2} \\
+\hline
+	MS Windows 10 64-bit \\
+	Intel Xeon E3-1231 v3 @ 3.4 GHz \\
+	16 GB RAM \\
+	NVIDIA GeForce GTX 1070 Ti \\
+	OpenGL Driver version TODO \\
+	NVIDIA proprietary driver version TODO \\
+	2432 CUDA cores, 8 GB VRAM \\
+\end{tabular}
+	\caption{PC-2 used to measure the results.}
+	\label{table:pc2}
+\end{table}
+
+\begin{table}
+	\begin{tabularx}{1\linewidth}{X r r r}
+\hline
+		\textbf{Grid subdivision (s)} \newline (along each dimension) & \textbf{\# of particles} & \textbf{PC-1} & \textbf{PC-2} \\
+\hline
+	16  & 32\,768 & 47 & \\
+	32  & 32\,768 & 23 & \\
+	32  & 65\,536 & 69 & \\
+	64  & 32\,768 & 18 & \\
+	64  & 262\,144 & 220 & \\
+	64  & 524\,288 & 437 & \\
+	128 & 524\,288 & 477 & \\
+	128 & 1\,048\,576 & 835 & \\
+	128 & 2\,097\,152 & 1\,622 & \\
+\hline
+\end{tabularx}
+	\caption{Measured average simulation frame time (without visualization) in milliseconds.}
+	\label{table:results}
+\end{table}
 
 
 \section{Conclusion}
