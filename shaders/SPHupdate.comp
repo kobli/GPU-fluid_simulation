@@ -28,6 +28,10 @@ layout (std430, binding = 5) buffer CellRecords {
 	CellRec cellRec[];
 };
 
+layout (std430, binding = 6) buffer ParticleVelocitiesOut {
+	vec3 particleVelOut[];
+};
+
 uniform float Step;
 uniform float H;
 uniform float M;
@@ -115,13 +119,13 @@ void main(void) {
 	// update position using the current speed
 	particlePosOut[i] = particlePos[i] + particleVel[i]*Step;
 	// update speed using the computed acceleration
-	particleVel[i] += a*Step;
+	particleVelOut[i] = particleVel[i] + a*Step;
 	// collision check
 	vec3 surfaceNormal;
-	float velL = length(particleVel[i]);
+	float velL = length(particleVelOut[i]);
 	if(pointOutsideBounds(particlePosOut[i], boundsMin, boundsMax, surfaceNormal) && velL > 0 && !isinf(velL)) {
 		particlePosOut[i] = particlePos[i];
-		vec3 d = -particleVel[i]/velL;
-		particleVel[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
+		vec3 d = -particleVelOut[i]/velL;
+		particleVelOut[i] = (2*dot(d, surfaceNormal)*surfaceNormal-d)*velL;
 	}
 }
