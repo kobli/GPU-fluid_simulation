@@ -92,7 +92,6 @@
 \ifCLASSINFOpdf
 	
 	\usepackage{listings}
-	\renewcommand{\lstlistingname}{Ukázka kódu}
 	
 	\usepackage[pdftex]{graphicx}
 	  % declare the path(s) where your graphic files are
@@ -507,20 +506,38 @@ The cell index is then calculated from cell coordinates as
 	cellID(\mathbf{c}) = c_1s^2 + c_2s + c_3.
 \end{equation}
 
-
-
-
-
-
 \section{Parallelization}
+At the beginning of every frame, the auxilliary data structure must be built. It consists of several steps, which need to be done one after another -- without overlap.
+\begin{enumerate}
+	\item Create particle records. (parallel)
+	\item Sort particle records. (parallel -- using bitonic sort -- see below)
+	\item Create cell records. (single thread on GPU)
+	\item Reorder particle positions and velocities. (parallel -- different source and destination buffers)
+\end{enumerate}
+Then the particle positions and velocities can be updated in the following non-overlapping steps.
+\begin{enumerate}
+	\item Compute density at position of each particle. (parallel)
+	\item Update particle positions and velocities. (parallel)
+\end{enumerate}
 
-\subsection{Bitonic sort}
+\subsection{Bitonic mergesort}
+Bitonic sort is a parallel sorting algorithm based on merging two sorted sequences (a bitonic sequence) into a single one. A bitonic sequence is a sequence that can be split into two sorted sequences, or its circular shift. Figure \ref{fig:bitonicSort} shows a bitonic sorting network. The comparisons and swaps in single column of the red boxes can be executed in parallel. Afterwards, all threads must be synchronized. Therefore this column will correspond to a single compute shader dispatch. Listing \ref{alg:bitonicSort} demonstrates this. Iteration of the inner for loop corresponds to the red-box column within the blue/green-box column, iteration of the outer for loop corresponds to the blue/green-box column in the figure \ref{fig:bitonicSort}.
+\begin{figure*}[!h]
+\centering
+\includegraphics[width=\textwidth]{BitonicSort}
+\caption{Bitonic sorting net. The elements to be sorted enter on the wires from the left and exit on the right in a sorted sequence. Arrows represent a comparison between two elements and conditional swap so that the arrow always points to the larger element. On the input of a blue/green block is always a bitonic sequence and on the output is a sorted sequence. Therefore the output of neighbouring blue and green box forms a bitonic sequence, which becomes an input for the next box. From Wikipedia.}
+\label{fig:bitonicSort}
+\end{figure*}
 
-%\lstset{language=C++,caption=Generování n
-%náhodně umístěných bodů uvnitř koule.,frame=single,label=listing:koule
-%,captionpos=b,basicstyle= \footnotesize,tabsize=1} 
-%\begin{lstlisting}
-%\end{lstlisting} 
+\lstset{language=C++,caption=Calls to the bitonic sort kernel,frame=single,label=alg:bitonicSort,captionpos=b,basicstyle= \footnotesize,tabsize=1} 
+\begin{lstlisting}
+	for(size_t b=2; b<2*ParticleN; b*=2) {
+		for(size_t seqLen=b; seqLen>1; seqLen/=2) {
+			glDispatchCompute(ParticleN/tGroupSize,1,1);
+			glMemoryBarrier(...);
+		}
+	}
+\end{lstlisting} 
 
 \section{Implementation details -- compute shaders}
 kernel sequence, grid sizes (and reasoning), shm
