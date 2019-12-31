@@ -263,6 +263,8 @@
 % such use. Do not be tempted to use the cuted.sty or midfloat.sty packages (also
 % by Sigitas Tolusis) as IEEE does not format its papers in such ways.
 
+	\usepackage{tabularx}
+
 
 
 
@@ -377,7 +379,7 @@ Fluids are very common in various real-world environments, therefore they should
 %\end{figure}
 
 \section{Smoothed particle hydrodynamics}
-Smoothed particle hydrodynamics is an approach introduced by Monaghan in \cite{Articles:Monaghan}.
+Smoothed particle hydrodynamics is an approach introduced by Monaghan \cite{Articles:Monaghan}.
 Each particle $i$ has constant mass $m_{i}$ and rest density $\rho_{0i}$ assigned according to the type of liquid. The particles form a density field
 
 \begin{equation}
@@ -429,7 +431,7 @@ $\mathbf{a}_i$ is acceleration of the particle computed as
 Morris \cite{Articles:Morris} proposed to add a surface tension force, which should help to maintain sharp interfaces between fluids.
 
 \subsection{Smoothing kernels}
-Müller\cite{Articles:Muller} proposed the following kernel to be used for computation of density 
+Müller \cite{Articles:Muller} proposed the following kernel to be used for computation of density 
 
 \begin{equation}
 	W_d(\mathbf{r},h) = \frac{315}{64\pi h^9}
@@ -453,6 +455,62 @@ and the last kernel -- for computation of viscosity
 \end{equation}
 
 \section{Nearest neighbour search}
+The complexity of the SPH algorithm as described above is $O(n^2)$. But a particle is going to be affected only be those particles that are very close to it. Therefore it is possible to reduce computation when computing the density and forces by including only the particles which are near enough. These can be found faster by building an auxilliary data structure before each update step of the particles.
+
+First all the particles are wrapped in a bounding cube, which is partitioned into cells by a uniform square grid. Then a list of particles for each cell is created. The following two methods described by Green \cite{Articles:Green} can be used on a GPU. This paper uses the second one.
+
+\begin{figure*}
+	\begin{minipage}{0.25\linewidth}
+		\centering
+		\includegraphics[width=1\linewidth]{grid}
+		\caption{Particles in a grid. The green circle marks area with potential neighbours affecting the particle. From \cite{Articles:Green}.}
+		\label{fig:grid}
+\end{minipage}\hfill
+\begin{minipage}{0.7\linewidth}
+    \centering
+
+		\begin{tabularx}{1\linewidth}{|c||X|X||X|}
+			\hline
+			 & Particle records unsorted \newline ($cellID$, $particleID$) & Particle records \newline sorted by $cellID$ & cell records \newline $(firstParticle, N)$ \\
+			\hline
+			\hline
+			0 & (9,0) & (4,3) & (-,0) \\
+			1 & (6,1) & (4,5) & (-,0) \\
+			2 & (6,2) & (6,1) & (-,0) \\
+			3 & (4,3) & (6,2) & (-,0) \\
+			4 & (6,4) & (6,4) & (0,2) \\
+			5 & (4,5) & (9,0) & (-,0) \\
+			6 &       &       & (2,3) \\
+			7 &       &       & \dots \\
+			\hline
+		\end{tabularx}
+		\caption{Creating the cell records by sorting the particle records.}
+		\label{fig:gridTable}
+	\end{minipage}
+\end{figure*}
+
+\subsection{Atomic operations}
+This approach uses for each cell a counter that stores the number of particles and a fixed-size list of particle indices lying in that cell. Updating the data structure is done with one thread per particle. The thread increments the counter and adds the particle index to the list. This causes scattered writes (and later scattered reads in the particle update phase) and potential bank conflicts.
+
+\subsection{Sorting}
+First a list a particle records needs to be built. Each record contains the $cellID$ of the cell it lies in and a $particleID$. These records are then sorted by $cellID$. Then a list of cell records is built, each cell record contains ID of the first particle and number of particles. See figure \ref{fig:grid} and \ref{fig:gridTable}. Finally, the particles are reordered according to the order of particle records. In the update phase, a particle is affected only by particles from the same cell and the cells surrounding it (27 cells in total = $3^3$). 
+
+The size of the cell should be at most $h$, which is the radius of the kernel, because the weight for any particle that is farther away than $h$ will be 0. The $cellID$ can be calculated from 3D coordinates of the particle by first calculating the cell coordinates as 
+
+\begin{equation}
+	\mathbf{cell}(\mathbf{r}) = s\frac{\mathbf{r}-\mathbf{BB}_{min}}{\mathbf{BB}_{max} - \mathbf{BB}_{min}}.
+\end{equation}
+
+The cell index is then calculated from cell coordinates as
+
+\begin{equation}
+	cellID(\mathbf{c}) = c_1s^2 + c_2s + c_3.
+\end{equation}
+
+
+
+
+
 
 \section{Parallelization}
 
@@ -482,13 +540,6 @@ The SPH method has several parameters. The currently used setting has been deter
 \section{Performance}
 table of results for both configurations
 commentary (not / as expected, why)
-
-%\begin{figure}[!h]
-%\centering
-%\includegraphics[width=3in]{test2}
-%\caption{Doba běhu aplikace pro testovací sadu 2.}
-%\label{fig:test2}
-%\end{figure}
 
 The measured results were obtained on the following configurations:
 
@@ -625,6 +676,8 @@ evaluate results, conclusion, possible improvements
 	Müller et al.: \emph{Particle-Based Fluid Simulation for Interactive Applications}
 \bibitem{Articles:Morris}
 	Morris, J.P.: \emph{Simulating surface tension with smoothed particle hydrodynamics}. 2000.
+\bibitem{Articles:Green}
+	Green, S.: \emph{Particle Simulation using CUDA}. 2010.
 
 \end{thebibliography}
 
