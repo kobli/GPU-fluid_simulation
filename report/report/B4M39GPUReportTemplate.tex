@@ -550,6 +550,32 @@ Bitonic sort is a parallel sorting algorithm based on merging two sorted sequenc
 The sequence of kernels is described in section \ref{sec:parallelization}. It is necessary to ensure memory coherenecy between dispatches by using a memoryBarrier. All the steps which are marked "(parallel)" use the same number of threads (shader invocations) as there are particles. Sorting requires $log^2(particleN)$ iterations, same number of threads. Creating cell records needs single iteration over the sorted cell records of one thread. Shared memory is currently not used, but the steps 5) and 6) could be changed so they could potentially benefit from using it. See \ref{sec:improvements} for possible improvements.
 
 \section{User interface}
+The application can be controlled by keys listed in table \ref{table:controls}. Simulation parameters can be increased (multiplied by two) with upper case letters, decreased (divided by two) by lower case letters as listed in the table. After adjusting a parameter, the current setting of all parameters is printed to standard output.
+\begin{table}[h]
+	\normalsize
+	\centering
+	\begin{tabular}{|l|l|}
+		\hline
+		\textbf{Key} & \textbf{Action} \\
+		\hline
+		\hline
+		esc & exit \\
+		r & restart simulation \\
+		\hline
+		\hline
+		\textbf{Key (+/-)} & \textbf{Parameter} \\
+		\hline
+		\hline
+		S/s & simulation step \\
+		H/h & kernel radius \\
+		M/m & particle mass \\
+		K/k & pressure coefficient \\
+		U/u & viscosity coefficient \\
+		\hline
+	\end{tabular}
+	\caption{Application controls}
+	\label{table:controls}
+\end{table}
 
 \begin{figure}[!h]
 \centering
