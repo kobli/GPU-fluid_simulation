@@ -626,13 +626,15 @@ class Application {
 			GLint ambientKLoc = glGetUniformLocation(shader, "Mat.ambientK");
 			glUniform1f(ambientKLoc, material.ambientK);
 			GLint colorLoc = glGetUniformLocation(shader, "Mat.color");
-			glUniform4fv(colorLoc, 1, material.color.data.data);
+			vec4 bboxColor(1,1,1,1);
+			glUniform4fv(colorLoc, 1, bboxColor.data.data);
 			GLint camPosLoc = glGetUniformLocation(shader, "CameraPos");
 			glUniform3fv(camPosLoc, 1, cameraPos.data.data);
 
 			glVertexAttrib3f(2, 0, 0, 0);
 
 			b.draw();
+			glUniform4fv(colorLoc, 1, material.color.data.data);
 			sph.draw();
 		}
 
