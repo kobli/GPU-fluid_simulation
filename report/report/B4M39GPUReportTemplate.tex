@@ -669,11 +669,11 @@ The measured results in table \ref{table:results} were obtained on the configura
 
 \section{Conclusion}
 \label{sec:improvements}
-better GPU impl:
-	- cellRec - 1 thread per particle, store firstParticleID if prevParticleRec.cellID is different; second pass: store cellID.N = particleN-cellID.first if nextParticleRec.cellID differs
-	- density,update - every workGroup gets a cellRecord to process (small workgroup 32 or 64 threads), copy data into SHM only if there are particles in the cell
-evaluate results, conclusion, possible improvements
+TODO evaluate results, conclusion
 
+The GPU implementation could most likely be improved. Firstly, the shader that creates cell records could be changed to use one thread per particle. Each thread would compare the ID of the cell it belongs to with that of the previous particle. If it is different, it indicates the beginning of the new cell in the sorted sequence of particle records and the thread would write its ID to the cell record. Second pass would work the same way but it would look for the end of the sequence of particle records and, using the beginning obtained in the previous pass, it would write the length of the sequence into the cell record.
+
+Another possible improvement could be made in the density computation and particle update shaders. Each cell record would be processed by one workgroup, therefore particles in the surrounding cells could be loaded into shared memory and could be used for updating all particles in this cell.
 
 
 % An example of a floating figure using the graphicx package.
