@@ -580,6 +580,10 @@ The application can be controlled by keys listed in table \ref{table:controls}. 
 \section{Parameter choice and testing}
 The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. Particles occasionally get stuck on the boundary due to TODO. Also because the step size is constant and relatively large, the particle never stop moving. The figure \ref{fig:screen} shows a screenshot of the application.
 
+weird behaviour with large number of particles, maybe adjust constants
+
+TODO on win - cmake, occasional timer query not working, 
+
 \begin{figure}[!h]
 \centering
 \includegraphics[width=1\linewidth]{screenshot}
@@ -651,20 +655,22 @@ The measured results in table \ref{table:results} were obtained on the configura
 \hline
 		\textbf{Grid subdivision (s)} \newline (along each dimension) & \textbf{\# of particles} & \textbf{PC-1} & \textbf{PC-2} \\
 \hline
-	16  & 32\,768 & 47 & \\
-	32  & 32\,768 & 23 & \\
-	32  & 65\,536 & 69 & \\
-	64  & 32\,768 & 18 & \\
-	64  & 262\,144 & 220 & \\
-	64  & 524\,288 & 437 & \\
-	128 & 524\,288 & 477 & \\
-	128 & 1\,048\,576 & 835 & \\
-	128 & 2\,097\,152 & 1\,622 & \\
+	16  & 32\,768 & 47 & 8 \\
+	32  & 32\,768 & 23 & 6 \\
+	32  & 65\,536 & 69 & 12 \\
+	64  & 32\,768 & 18 & 12 \\
+	64  & 262\,144 & 220 & 54 \\
+	64  & 524\,288 & 437 & 103 \\
+	128 & 524\,288 & 477 & 152 \\
+	128 & 1\,048\,576 & 835 & 250 \\
+	128 & 2\,097\,152 & 1\,622 & 445 \\
 \hline
 \end{tabularx}
 	\caption{Measured average simulation frame time (without visualization) in milliseconds.}
 	\label{table:results}
 \end{table}
+
+The measured times are dependent on number of particles in each cell, which depends on the pressure and viscosity coefficients.
 
 
 \section{Conclusion}
@@ -675,6 +681,7 @@ The GPU implementation could most likely be improved. Firstly, the shader that c
 
 Another possible improvement could be made in the density computation and particle update shaders. Each cell record would be processed by one workgroup, therefore particles in the surrounding cells could be loaded into shared memory and could be used for updating all particles in this cell.
 
+TODO sort impr
 
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
