@@ -374,13 +374,6 @@
 % no \IEEEPARstart
 Fluids are very common in various real-world environments, therefore they should not be missing in their virtual counterparts to look realistic. To look realistic, however, a large number of particles is necessary to provide sufficient detail. Since there are no dependencies between the particles, their state can be updated independently in every step, which makes this task perfect for parallelization. 
 
-%\begin{figure}[!h]
-%\centering
-%\includegraphics[width=2in]{hierarchy}
-%\caption{Class hierarchy of the application.}
-%\label{fig:hierarchy}
-%\end{figure}
-
 \section{Smoothed particle hydrodynamics}
 Smoothed particle hydrodynamics is an approach introduced by Monaghan \cite{Articles:Monaghan}.
 Each particle $i$ has constant mass $m_{i}$ and rest density $\rho_{0i}$ assigned according to the type of liquid. The particles form a density field
@@ -431,7 +424,7 @@ $\mathbf{a}_i$ is acceleration of the particle computed as
 	\mathbf{a}_i = \frac{\mathbf{f}_{i}}{\rho(\mathbf{r}_{i})}.
 \end{equation}
 
-Morris \cite{Articles:Morris} proposed to add a surface tension force, which should help to maintain sharp interfaces between fluids.
+Morris \cite{Articles:Morris} proposed to add a surface tension force, which should help to maintain sharp interfaces between fluids. For an overview of SPH with broader context, such as different neighbour search methods or integration methods, see \ref{Articles:Ertekin}.
 
 \subsection{Smoothing kernels}
 Müller \cite{Articles:Muller} proposed the following kernel to be used for computation of density 
@@ -578,11 +571,9 @@ The application can be controlled by keys listed in table \ref{table:controls}. 
 \end{table}
 
 \section{Parameter choice and testing}
-The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. Particles occasionally get stuck on the boundary due to TODO. Also because the step size is constant and relatively large, the particle never stop moving. The figure \ref{fig:screen} shows a screenshot of the application.
+The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. The fluid behaves strangely for large number of particles, as if it was compressing and expanding, possibly due to suboptimal coefficients. Particles occasionally get stuck on the boundary. Also because the step size is constant and relatively large, the particle never stop moving. The figure \ref{fig:screen} shows a screenshot of the application.
 
-weird behaviour with large number of particles, maybe adjust constants
-
-TODO on win - cmake, occasional timer query not working, 
+Also there were build problems on Windows with the included CMake configuration file, which was not able to generate the project even after manually setting the paths to dependencies. Another issue on Windows is that the query object used to measure the simulation frame time sometimes does not get initialized, so it may be necessary to restart the application several times.
 
 \begin{figure}[!h]
 \centering
@@ -612,10 +603,9 @@ TODO on win - cmake, occasional timer query not working,
 
 
 \section{Performance}
-TODO table of results for both configurations
-commentary (not / as expected, why)
+The measured results in table \ref{table:results} were obtained on the configurations listed in table \ref{table:pc1} and \ref{table:pc2}. They are dependent on number of particles in each cell, which in turn depends on the pressure and viscosity coefficients.
 
-The measured results in table \ref{table:results} were obtained on the configurations listed in table \ref{table:pc1} and \ref{table:pc2}.
+As expected, the frame time grows more or less linearly with the number of particles. There is an unexpected increase in frame time between the 5. and 6. row due to increased number of cells, which shoud be investigated. Also when comparing the results with other implementations, there seems to be higher penalty for increasing the number of cells, but it handled better higher numbers of particles.
 \begin{table}[!htbp]
 	\begin{tabular}{l}
 		\hline
@@ -651,37 +641,32 @@ The measured results in table \ref{table:results} were obtained on the configura
 \end{table}
 
 \begin{table}
-	\begin{tabularx}{1\linewidth}{X r r r}
+	\begin{tabularx}{1\linewidth}{r X r r r}
 \hline
-		\textbf{Grid subdivision (s)} \newline (along each dimension) & \textbf{\# of particles} & \textbf{PC-1} & \textbf{PC-2} \\
+		& \textbf{Grid subdivision (s)} \newline (along each dimension) & \textbf{\# of particles} & \textbf{PC-1} & \textbf{PC-2} \\
 \hline
-	16  & 32\,768 & 47 & 8 \\
-	32  & 32\,768 & 23 & 6 \\
-	32  & 65\,536 & 69 & 12 \\
-	64  & 32\,768 & 18 & 12 \\
-	64  & 262\,144 & 220 & 54 \\
-	64  & 524\,288 & 437 & 103 \\
-	128 & 524\,288 & 477 & 152 \\
-	128 & 1\,048\,576 & 835 & 250 \\
-	128 & 2\,097\,152 & 1\,622 & 445 \\
+	1 & 16  & 32\,768 & 47 & 8 \\
+	2 & 32  & 32\,768 & 23 & 6 \\
+	3 & 32  & 65\,536 & 69 & 12 \\
+	4 & 64  & 32\,768 & 38 & 12 \\
+	5 & 64  & 262\,144 & 220 & 54 \\
+	6 & 64  & 524\,288 & 437 & 103 \\
+	7 & 128 & 524\,288 & 477 & 152 \\
+	8 & 128 & 1\,048\,576 & 835 & 250 \\
+	9 & 128 & 2\,097\,152 & 1\,622 & 445 \\
 \hline
 \end{tabularx}
 	\caption{Measured average simulation frame time (without visualization) in milliseconds.}
 	\label{table:results}
 \end{table}
 
-The measured times are dependent on number of particles in each cell, which depends on the pressure and viscosity coefficients.
-
-
 \section{Conclusion}
 \label{sec:improvements}
-TODO evaluate results, conclusion
+Fluid simulation method using particle has been implemented on GPU. The demo application has minor bugs, such as particles stuck on boundary. Also the empirically determined parameters may not be the best fit -- there are methods to determine them described for example in \cite{Articles:Mao}. The performance is much higher than on the CPU, but the implementation should still be improved if it was inteded for real-time application running 60 frames per second, which gives only about 17 ms for the entire frame. There seems to be unnecessarily higher penalty for higher number of cells, which should be investigated. On the other hand, it handles better higher number of particles.
 
 The GPU implementation could most likely be improved. Firstly, the shader that creates cell records could be changed to use one thread per particle. Each thread would compare the ID of the cell it belongs to with that of the previous particle. If it is different, it indicates the beginning of the new cell in the sorted sequence of particle records and the thread would write its ID to the cell record. Second pass would work the same way but it would look for the end of the sequence of particle records and, using the beginning obtained in the previous pass, it would write the length of the sequence into the cell record.
 
 Another possible improvement could be made in the density computation and particle update shaders. Each cell record would be processed by one workgroup, therefore particles in the surrounding cells could be loaded into shared memory and could be used for updating all particles in this cell.
-
-TODO sort impr
 
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
@@ -794,14 +779,18 @@ TODO sort impr
 %H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
 %  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
 
-\bibitem{Articles:Monaghan}
-	Monaghan, J.J.: \emph{Smoothed Particle Hydrodynamics}. 1992.
-\bibitem{Articles:Muller}
-	Müller et al.: \emph{Particle-Based Fluid Simulation for Interactive Applications}
-\bibitem{Articles:Morris}
-	Morris, J.P.: \emph{Simulating surface tension with smoothed particle hydrodynamics}. 2000.
+\bibitem{Articles:Ertekin}
+	Ertekin, B.: \emph{Fluid Simulation using Smoothed Particle Hydrodynamics}. 2015.
 \bibitem{Articles:Green}
 	Green, S.: \emph{Particle Simulation using CUDA}. 2010.
+\bibitem{Articles:Mao}
+	Mao et al.: \emph{A comprehensive study on the parameters setting in smoothed particle hydrodynamics (SPH) method applied to hydrodynamics problems}. 2017.
+\bibitem{Articles:Monaghan}
+	Monaghan, J.J.: \emph{Smoothed Particle Hydrodynamics}. 1992.
+\bibitem{Articles:Morris}
+	Morris, J.P.: \emph{Simulating surface tension with smoothed particle hydrodynamics}. 2000.
+\bibitem{Articles:Muller}
+	Müller et al.: \emph{Particle-Based Fluid Simulation for Interactive Applications}. 2003.
 
 \end{thebibliography}
 
