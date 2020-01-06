@@ -662,11 +662,13 @@ As expected, the frame time grows more or less linearly with the number of parti
 
 \section{Conclusion}
 \label{sec:improvements}
-Fluid simulation method using particle has been implemented on GPU. The demo application has minor bugs, such as particles stuck on boundary. Also the empirically determined parameters may not be the best fit -- there are methods to determine them described for example in \cite{Articles:Mao}. The performance is much higher than on the CPU, but the implementation should still be improved if it was inteded for real-time application running 60 frames per second, which gives only about 17 ms for the entire frame. There seems to be unnecessarily higher penalty for higher number of cells, which should be investigated. On the other hand, it handles better higher number of particles.
+Fluid simulation method using particle has been implemented on GPU. The demo application has minor bugs, such as particles stuck on boundary. Also the empirically determined parameters may not be the best fit -- there are methods to determine them described for example in \cite{Articles:Mao}. Currently the euler integration method is used, but the leapfrog integration method is said to be more stable. The performance is much higher than on the CPU, but the implementation should still be improved if it was inteded for real-time application running 60 frames per second, which gives only about 17 ms for the entire frame. There seems to be unnecessarily higher penalty for higher number of cells, which should be investigated. On the other hand, it handles better higher number of particles.
 
 The GPU implementation could most likely be improved. Firstly, the shader that creates cell records could be changed to use one thread per particle. Each thread would compare the ID of the cell it belongs to with that of the previous particle. If it is different, it indicates the beginning of the new cell in the sorted sequence of particle records and the thread would write its ID to the cell record. Second pass would work the same way but it would look for the end of the sequence of particle records and, using the beginning obtained in the previous pass, it would write the length of the sequence into the cell record.
 
 Another possible improvement could be made in the density computation and particle update shaders. Each cell record would be processed by one workgroup, therefore particles in the surrounding cells could be loaded into shared memory and could be used for updating all particles in this cell.
+
+The implementation of bitonic sort could also be changed so that when the height of the red block in figure \ref{fig:bitonicSort} becomes smaller than double of the number of threads per block, it is then sufficient to synchronize only threads within each block and the shared memory can also be used.
 
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
