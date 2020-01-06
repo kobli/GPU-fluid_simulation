@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include <vector>
 #include <memory>
 #include <algorithm>
@@ -418,8 +419,8 @@ class SPHgpu: public SPH {
 			glUniform1f(glGetUniformLocation(program, "K"), K);
 			glUniform1f(glGetUniformLocation(program, "Mu"), Mu);
 			glUniform1ui(glGetUniformLocation(program, "SubdivisionN"), SubdivisionN);
-			glUniform3fv(glGetUniformLocation(program, "boundsMin"), 1, b.min.data.data);
-			glUniform3fv(glGetUniformLocation(program, "boundsMax"), 1, b.max.data.data);
+			glUniform3fv(glGetUniformLocation(program, "boundsMin"), 1, &b.min[0]);
+			glUniform3fv(glGetUniformLocation(program, "boundsMax"), 1, &b.max[0]);
 		}
 
 	private:
@@ -627,14 +628,14 @@ class Application {
 			glUniform1f(ambientKLoc, material.ambientK);
 			GLint colorLoc = glGetUniformLocation(shader, "Mat.color");
 			vec4 bboxColor(1,1,1,1);
-			glUniform4fv(colorLoc, 1, bboxColor.data.data);
+			glUniform4fv(colorLoc, 1, &bboxColor[0]);
 			GLint camPosLoc = glGetUniformLocation(shader, "CameraPos");
-			glUniform3fv(camPosLoc, 1, cameraPos.data.data);
+			glUniform3fv(camPosLoc, 1, &cameraPos[0]);
 
 			glVertexAttrib3f(2, 0, 0, 0);
 
 			b.draw();
-			glUniform4fv(colorLoc, 1, material.color.data.data);
+			glUniform4fv(colorLoc, 1, &material.color[0]);
 			sph.draw();
 		}
 
@@ -736,7 +737,7 @@ int main(int argc, char* argv[]) {
 	if(glDebugMessageCallback){
 		cout << "Register OpenGL debug callback " << endl;
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback(openglCallbackFunction, nullptr);
+		glDebugMessageCallback((GLDEBUGPROC)openglCallbackFunction, nullptr);
 		GLuint unusedIds = 0;
 		glDebugMessageControl(GL_DONT_CARE,
 				GL_DONT_CARE,
