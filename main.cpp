@@ -113,18 +113,26 @@ int main(int argc, char* argv[]) {
 	config.Mu = Mu;
 
   glutInit(&argc, argv);
+#ifdef DEBUG
+	cout << "Debug build\n";
+	glutInitContextFlags (GLUT_CORE_PROFILE | GLUT_DEBUG);
+#else
+	cout << "Release build\n";
+	glutInitContextFlags (GLUT_CORE_PROFILE);
+#endif
   glutInitWindowSize(IMAGE_WIDTH, IMAGE_HEIGHT);
   glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGBA );
-  glutCreateWindow("SPH demo");
+	glutCreateWindow("SPH demo");
 
 	if(glewInit()) {
 		cerr << "Cannot initialize GLEW\n";
 		exit(EXIT_FAILURE);
 	}
+#ifdef DEBUG
 	if(glDebugMessageCallback){
 		cout << "Register OpenGL debug callback " << endl;
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback((GLDEBUGPROC)openglCallbackFunction, nullptr);
+		glDebugMessageCallback(GLDEBUGPROC(openglCallbackFunction), nullptr);
 		GLuint unusedIds = 0;
 		glDebugMessageControl(GL_DONT_CARE,
 				GL_DONT_CARE,
@@ -132,10 +140,13 @@ int main(int argc, char* argv[]) {
 				0,
 				&unusedIds,
 				true);
-		glEnable(GL_DEBUG_OUTPUT);
 	}
 	else
 		cout << "glDebugMessageCallback not available" << endl;
+#endif
+
+	std::cout << "# of particles: " << ParticleN << std::endl;
+	std::cout << "level of subdivision: " << SubdivisionN << std::endl;
 
   glutDisplayFunc(DrawImage);
   glutKeyboardFunc(HandleKeys);
