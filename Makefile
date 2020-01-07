@@ -2,7 +2,7 @@ BIN=demo
 
 build: $(BIN)
 
-$(BIN): main.cpp utils.cpp
+$(BIN): *.cpp
 	g++ -g $^ -o $@ -lGL -lglut -lGLEW
 
 test: $(BIN)

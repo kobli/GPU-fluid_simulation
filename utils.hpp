@@ -4,13 +4,27 @@
 #include <vector>
 #include <tuple>
 #include <string>
+#include <GL/glew.h>
 #include <GL/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
+struct Material {
+	glm::vec4 color;
+	float ambientK;
+	float diffuseK;
+	float specularK;
+	float shininess;
+};
+
+using vec3 = glm::vec3;
+using vec4 = glm::vec4;
+
 const glm::vec3 UP(0,1,0);
+
+float frand();
 
 std::ostream& operator<<(std::ostream& s, const glm::vec3& v);
 std::istream& operator>>(std::istream& s, glm::vec3& v);

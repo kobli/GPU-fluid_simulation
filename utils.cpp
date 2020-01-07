@@ -16,6 +16,10 @@ std::istream& operator>>(std::istream& s, glm::vec3& v) {
 	return s >> v.x >> v.y >> v.z;
 }
 
+float frand() {
+	return float(rand())/RAND_MAX;
+}
+
 void setUniform(GLuint program, const glm::mat4x4& m, std::string name) {
 	GLint loc = glGetUniformLocation(program, name.c_str());
 	if(loc == -1)
