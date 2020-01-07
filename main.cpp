@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
   glutIdleFunc(idleFunc);
 
 	Bounds b(BoxSize);
-	app.reset(new Application(std::move(std::unique_ptr<SPH>(new SPHimpl(config, b))), b));
+	app.reset(new Application(std::unique_ptr<SPH>(new SPHimpl(config, b)), b));
   glutMainLoop();
   return 0;
 }
