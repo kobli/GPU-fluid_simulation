@@ -1,7 +1,16 @@
+//----------------------------------------------------------------------------------------
+/**
+ * \file       sphCpu.hpp
+ * \author     Ales Koblizek
+ * \date       2020/01/07
+ * \brief      CPU implementation of SPH
+*/
+//----------------------------------------------------------------------------------------
 #ifndef SPHCPU_HPP_20_01_07_21_10_15
 #define SPHCPU_HPP_20_01_07_21_10_15 
 #include "sph.hpp"
 
+/// CPU implementation of SPH
 class SPHcpu: public SPH {
 	public:
 		SPHcpu(SPHconfig &config, Bounds& _b);

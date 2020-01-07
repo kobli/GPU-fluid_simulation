@@ -1,7 +1,16 @@
+//----------------------------------------------------------------------------------------
+/**
+ * \file       bounds.hpp
+ * \author     Ales Koblizek
+ * \date       2020/01/07
+ * \brief      Particle simulation bounds - box
+*/
+//----------------------------------------------------------------------------------------
 #ifndef BOUNDS_HPP_20_01_07_21_15_07
 #define BOUNDS_HPP_20_01_07_21_15_07 
 #include "utils.hpp"
 
+/// Box bounds for the particle simulation, wireframe drawing
 class Bounds {
 	public:
 		Bounds(vec3 _size);

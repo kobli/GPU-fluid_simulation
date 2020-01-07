@@ -1,3 +1,11 @@
+//----------------------------------------------------------------------------------------
+/**
+ * \file       sphKernels.hpp
+ * \author     Ales Koblizek
+ * \date       2020/01/07
+ * \brief      Kernels used for the SPH
+*/
+//----------------------------------------------------------------------------------------
 #ifndef SPHKERNELS_HPP_20_01_07_21_10_08
 #define SPHKERNELS_HPP_20_01_07_21_10_08 
 #include <glm/glm.hpp>

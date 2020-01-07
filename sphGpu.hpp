@@ -1,7 +1,16 @@
+//----------------------------------------------------------------------------------------
+/**
+ * \file       sphGpu.hpp
+ * \author     Ales Koblizek
+ * \date       2020/01/07
+ * \brief      GPU implementation of SPH
+*/
+//----------------------------------------------------------------------------------------
 #ifndef SPHGPU_HPP_20_01_07_21_10_21
 #define SPHGPU_HPP_20_01_07_21_10_21 
 #include "sph.hpp"
 
+/// GPU implementation of SPH
 class SPHgpu: public SPH {
 	public:
 		SPHgpu(SPHconfig &config, Bounds& _b);

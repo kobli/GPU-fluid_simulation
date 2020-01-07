@@ -1,3 +1,11 @@
+//----------------------------------------------------------------------------------------
+/**
+ * \file       utils.hpp
+ * \author     Ales Koblizek
+ * \date       2020/01/07
+ * \brief      Various utilities, common type declarations
+*/
+//----------------------------------------------------------------------------------------
 #ifndef UTILS_HPP_18_12_29_15_46_10
 #define UTILS_HPP_18_12_29_15_46_10 
 #include <iostream>
