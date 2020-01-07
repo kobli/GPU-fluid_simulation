@@ -340,7 +340,7 @@
 
 
 \begin{abstract}
-	There are two basic approaches to simulation of fluid dynamics: Eulerian -- focusing on motion at specific location and Lagrangian -- focusing on motion of individual fluid parcels. This paper focuses on the latter approach. The SPH (Smoothed particle hydrodynamics) computation method has been implemented in compute shader along with OpenGL visualization of the particles. A regular grid is used to accelerate the search for nearest neighbour particles.
+	There are two basic approaches to simulation of fluid dynamics: Eulerian -- focusing on motion at specific location and Lagrangian -- focusing on motion of individual fluid parcels. This paper takes the latter approach. The SPH (Smoothed particle hydrodynamics) computation method has been implemented in compute shader along with OpenGL visualization of the particles. A regular grid is used to accelerate the search for neighbour particles.
 
 \end{abstract}
 % IEEEtran.cls defaults to using nonbold math in the Abstract.
@@ -372,11 +372,11 @@
  
 \section{Introduction}
 % no \IEEEPARstart
-Fluids are very common in various real-world environments, therefore they should not be missing in their virtual counterparts to look realistic. To look realistic, however, a large number of particles is necessary to provide sufficient detail. Since there are no dependencies between the particles, their state can be updated independently in every step, which makes this task perfect for parallelization. 
+Fluids are very common in various real-world environments, therefore they are necessary for their virtual models to remain realistic. For that, however, a large number of particles is required to provide sufficient detail. Since there are no dependencies between the particles, their state can be updated independently in every step, which makes this task perfect for the massively parallel power of GPUs. 
 
 \section{Smoothed particle hydrodynamics}
-Smoothed particle hydrodynamics is an approach introduced by Monaghan \cite{Articles:Monaghan}.
-Each particle $i$ has constant mass $m_{i}$ and rest density $\rho_{0i}$ assigned according to the type of liquid. The particles form a density field
+Smoothed particle hydrodynamics is an approach introduced in \cite{Articles:Monaghan} by Monaghan.
+Each particle $i$ has constant mass $m_{i}$ and rest density $\rho_{0i}$ assigned according to the type of fluid. The particles form a density field
 
 \begin{equation}
 	\rho(\mathbf{r}) = \sum_{i} m_{i}W_d(\mathbf{r}-\mathbf{r}_i, h)
@@ -384,7 +384,7 @@ Each particle $i$ has constant mass $m_{i}$ and rest density $\rho_{0i}$ assigne
 
 which does not have to be bounded. $W_d$ is a density kernel, it will be explained in the next section along with the other kernels. This density field generates forces $\mathbf{f}_{i}^{pressure}$, $\mathbf{f}_{i}^{viscosity}$ acting on the particles. 
 
-The simulation loop first computes the values of the density field at location of each particle and the force acting on each particle
+The simulation loop first computes the values of the density field at the location of each particle. These are then used to calculate the force acting on a particle
 
 \begin{equation}
 	\mathbf{f}_i = \mathbf{f}_{i}^{pressure} + \mathbf{f}_{i}^{viscosity} + \mathbf{f}_{i}^{external},
@@ -418,22 +418,22 @@ $s$ being the simulation step. The last step is to update the velocity from the 
 	\mathbf{v}_i = \mathbf{v}_i + s\mathbf{a}_i,
 \end{equation}
 
-$\mathbf{a}_i$ is acceleration of the particle computed as
+$\mathbf{a}_i$ is acceleration of the particle obtained as
 
 \begin{equation}
 	\mathbf{a}_i = \frac{\mathbf{f}_{i}}{\rho(\mathbf{r}_{i})}.
 \end{equation}
 
-Morris \cite{Articles:Morris} proposed to add a surface tension force, which should help to maintain sharp interfaces between fluids. For an overview of SPH with broader context, such as different neighbour search methods or integration methods, see \ref{Articles:Ertekin}.
+Morris proposed in \cite{Articles:Morris} to add a surface tension force, which should help to maintain sharp interfaces between fluids of different rest densities. For an overview of SPH with broader context, such as different neighbour search methods or integration methods, see \cite{Articles:Ertekin}.
 
 \subsection{Smoothing kernels}
-Müller \cite{Articles:Muller} proposed the following kernel to be used for computation of density 
+Müller proposed in \cite{Articles:Muller} the following kernel to be used for computation of density 
 
 \begin{equation}
 	W_d(\mathbf{r},h) = \frac{315}{64\pi h^9}
 	\left\{
 		\begin{array}{ll}
-			(h^2-r^2)^3 	& 0\leq r \leq h\\
+			(h^2-|\mathbf{r}|^2)^3 	& 0\leq |\mathbf{r}| \leq h\\
 			0 						& otherwise
 		\end{array}
 		\right.
@@ -450,8 +450,10 @@ and the last kernel -- for computation of viscosity
 	W_v(\mathbf{r},h) = \frac{45}{\pi h^6} (h-|\mathbf{r}|)
 \end{equation}
 
-\section{Nearest neighbour search}
-The complexity of the SPH algorithm as described above is $O(n^2)$. But a particle is going to be affected only be those particles that are very close to it. Therefore it is possible to reduce computation when computing the density and forces by including only the particles which are near enough. These can be found faster by building an auxilliary data structure before each update step of the particles.
+For desired properties of the kernels and a discussion of the advantages and disadvantages of those listed here, see \cite{Articles:Morris}.
+
+\section{Neighbour search}
+The time complexity of the SPH algorithm as described above is $O(n^2)$. But a particle is going to be affected only by those particles that are very close to it. Therefore it is possible to save time when computing the density and forces by including only the particles which are near enough. These can be found faster by building an auxilliary data structure before each update step of the particles.
 
 First all the particles are wrapped in a bounding cube, which is partitioned into cells by a uniform square grid. Then a list of particles for each cell is created. The following two methods described by Green \cite{Articles:Green} can be used on a GPU. This paper uses the second one.
 
@@ -486,18 +488,18 @@ First all the particles are wrapped in a bounding cube, which is partitioned int
 \end{figure*}
 
 \subsection{Atomic operations}
-This approach uses for each cell a counter that stores the number of particles and a fixed-size list of particle indices lying in that cell. Updating the data structure is done with one thread per particle. The thread increments the counter and adds the particle index to the list. This causes scattered writes (and later scattered reads in the particle update phase) and potential bank conflicts.
+This approach uses for each cell a counter that stores the number of particles and a fixed-size list of particle indices belonging to that cell. Updating the data structure is done with one thread per particle. The thread increments the counter and adds the particle index to the list. This causes scattered writes (and later scattered reads in the particle update phase) and potential bank conflicts.
 
 \subsection{Sorting}
-First a list a particle records needs to be built. Each record contains the $cellID$ of the cell it lies in and a $particleID$. These records are then sorted by $cellID$. Then a list of cell records is built, each cell record contains ID of the first particle and number of particles. See figure \ref{fig:grid} and \ref{fig:gridTable}. Finally, the particles are reordered according to the order of particle records. In the update phase, a particle is affected only by particles from the same cell and the cells surrounding it (27 cells in total = $3^3$). 
+First a list a particle records needs to be built. Each record contains the $cellID$ of the cell it belongs to and the $particleID$. These records are then sorted by $cellID$. Then a list of cell records is built, each cell record contains ID of the first particle and number of particles in that cell. See figure \ref{fig:grid} and \ref{fig:gridTable}. Finally, the particle data (position, velocity, etc.) is reordered according to the order of particle records. In the update phase, a particle is affected only by particles from the same cell and the cells surrounding it (27 cells in total = $3^3$). 
 
 The size of the cell should be at most $h$, which is the radius of the kernel, because the weight for any particle that is farther away than $h$ will be 0. The $cellID$ can be calculated from 3D coordinates of the particle by first calculating the cell coordinates as 
 
 \begin{equation}
-	\mathbf{cell}(\mathbf{r}) = s\frac{\mathbf{r}-\mathbf{BB}_{min}}{\mathbf{BB}_{max} - \mathbf{BB}_{min}}.
+	\mathbf{cell}(\mathbf{r}) = s\frac{\mathbf{r}-\mathbf{BB}_{min}}{\mathbf{BB}_{max} - \mathbf{BB}_{min}},
 \end{equation}
 
-The cell index is then calculated from cell coordinates as
+where $\mathbf{BB}_{min}$ and $\mathbf{BB}_{max}$ are the bounding cube min and max coordinates respectively. The cell index is then calculated from cell coordinates as
 
 \begin{equation}
 	cellID(\mathbf{c}) = c_1s^2 + c_2s + c_3.
@@ -505,7 +507,7 @@ The cell index is then calculated from cell coordinates as
 
 \section{Parallelization}
 \label{sec:parallelization}
-At the beginning of every frame, the auxilliary data structure must be built. It consists of several steps, which need to be done one after another -- without overlap.
+At the beginning of every frame, the auxilliary data structure must be built. This consists of several steps, which need to be done one after another -- without overlap.
 \begin{enumerate}
 	\item Create particle records. (parallel)
 	\item Sort particle records. (parallel -- using bitonic sort -- see below)
@@ -521,11 +523,11 @@ Then the particle positions and velocities can be updated in the following non-o
 \end{enumerate}
 
 \subsection{Bitonic mergesort}
-Bitonic sort is a parallel sorting algorithm based on merging two sorted sequences (a bitonic sequence) into a single one. A bitonic sequence is a sequence that can be split into two sorted sequences, or its circular shift. Figure \ref{fig:bitonicSort} shows a bitonic sorting network. The comparisons and swaps in single column of the red boxes can be executed in parallel. Afterwards, all threads must be synchronized. Therefore this column will correspond to a single compute shader dispatch. Listing \ref{alg:bitonicSort} demonstrates this. Iteration of the inner for loop corresponds to the red-box column within the blue/green-box column, iteration of the outer for loop corresponds to the blue/green-box column in the figure \ref{fig:bitonicSort}.
+Bitonic sort is a parallel sorting algorithm based on merging two sorted sequences (a bitonic sequence) into a single one. A bitonic sequence is a sequence that can be split into two sorted sequences, or its circular shift. Figure \ref{fig:bitonicSort} shows a bitonic sorting network. The comparisons and swaps in single column of the red boxes can be executed in parallel. Afterwards, all threads must be synchronized. Therefore this column will correspond to a single compute shader dispatch. Listing \ref{alg:bitonicSort} demonstrates this. Iteration of the inner for loop corresponds to the red-box column, iteration of the outer for loop corresponds to the blue/green-box column in the figure.
 \begin{figure*}[!h]
 \centering
 \includegraphics[width=\textwidth]{BitonicSort}
-\caption{Bitonic sorting net. The elements to be sorted enter on the wires from the left and exit on the right in a sorted sequence. Arrows represent a comparison between two elements and conditional swap so that the arrow always points to the larger element. On the input of a blue/green block is always a bitonic sequence and on the output is a sorted sequence. Therefore the output of neighbouring blue and green box forms a bitonic sequence, which becomes an input for the next box. From Wikipedia.}
+\caption{Bitonic sorting net. The elements to be sorted enter on the wires from the left and exit on the right in a sorted sequence. Arrows represent a comparison between two elements and conditional swap so that the arrow always points to the larger element. On the input of a blue or green block is always a bitonic sequence and on the output is a sorted sequence. Therefore, since the blue and green boxes have opposite sorting direction, the output of neighbouring blue and green box forms a bitonic sequence, which becomes an input for the next box. From Wikipedia.}
 \label{fig:bitonicSort}
 \end{figure*}
 
@@ -540,7 +542,7 @@ Bitonic sort is a parallel sorting algorithm based on merging two sorted sequenc
 \end{lstlisting} 
 
 \section{Implementation details -- compute shaders}
-The sequence of kernels is described in section \ref{sec:parallelization}. It is necessary to ensure memory coherenecy between dispatches by using a memoryBarrier. All the steps which are marked "(parallel)" use the same number of threads (shader invocations) as there are particles. Sorting requires $log^2(particleN)$ iterations, same number of threads. Creating cell records needs single iteration over the sorted cell records of one thread. Shared memory is currently not used, but the steps 5) and 6) could be changed so they could potentially benefit from using it. See \ref{sec:improvements} for possible improvements.
+The sequence of kernels is described in section \ref{sec:parallelization}. It is necessary to ensure memory coherenecy between dispatches by using a memoryBarrier. All the steps which are marked "(parallel)" use the same number of threads (shader invocations) as there are particles. Sorting requires $log^2(particleN)$ iterations, same number of threads. Creating cell records needs single iteration over the sorted cell records of one thread. Shared memory is currently not used, but the steps 5) and 6) could be changed so they could potentially benefit from using it. See section \ref{sec:improvements} for possible improvements.
 
 \section{User interface}
 The application can be controlled by keys listed in table \ref{table:controls}. Simulation parameters can be increased (multiplied by two) with upper case letters, decreased (divided by two) by lower case letters as listed in the table. After adjusting a parameter, the current setting of all parameters is printed to standard output.
@@ -571,7 +573,7 @@ The application can be controlled by keys listed in table \ref{table:controls}. 
 \end{table}
 
 \section{Parameter choice and testing}
-The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. The fluid behaves strangely for large number of particles, as if it was compressing and expanding, possibly due to suboptimal coefficients. Particles occasionally get stuck on the boundary. Also because the step size is constant and relatively large, the particle never stop moving. The figure \ref{fig:screen} shows a screenshot of the application.
+The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. The fluid behaves strangely for large number of particles, as if it was compressing and expanding, possibly due to suboptimal choice of coefficients. Particles occasionally get stuck on the boundary. Also because the step size is constant and relatively large, the particles never stop moving. Figure \ref{fig:screen} shows a screenshot of the application.
 
 Also there were build problems on Windows with the included CMake configuration file, which was not able to generate the project even after manually setting the paths to dependencies. Another issue on Windows is that the query object used to measure the simulation frame time sometimes does not get initialized, so it may be necessary to restart the application several times.
 
@@ -605,7 +607,7 @@ Also there were build problems on Windows with the included CMake configuration 
 \section{Performance}
 The measured results in table \ref{table:results} were obtained on the configurations listed in table \ref{table:pc1} and \ref{table:pc2}. They are dependent on number of particles in each cell, which in turn depends on the pressure and viscosity coefficients.
 
-As expected, the frame time grows more or less linearly with the number of particles. There is an unexpected increase in frame time between the 5. and 6. row due to increased number of cells, which shoud be investigated. Also when comparing the results with other implementations, there seems to be higher penalty for increasing the number of cells, but it handled better higher numbers of particles.
+As expected, the frame time grows more or less linearly with the number of particles. There is an unexpected increase in frame time between the 5. and 6. row due to increased number of cells, which shoud be investigated. Also when comparing the results with other implementations, there seems to be higher penalty for increasing the number of cells, but it handles better higher numbers of particles.
 \begin{table}[!htbp]
 	\begin{tabular}{l}
 		\hline
@@ -632,8 +634,7 @@ As expected, the frame time grows more or less linearly with the number of parti
 	Intel Xeon E3-1231 v3 @ 3.4 GHz \\
 	16 GB RAM \\
 	NVIDIA GeForce GTX 1070 Ti \\
-	OpenGL Driver version TODO \\
-	NVIDIA proprietary driver version TODO \\
+	NVIDIA driver version 432.00 \\
 	2432 CUDA cores, 8 GB VRAM \\
 \end{tabular}
 	\caption{PC-2 used to measure the results.}
@@ -662,7 +663,7 @@ As expected, the frame time grows more or less linearly with the number of parti
 
 \section{Conclusion}
 \label{sec:improvements}
-Fluid simulation method using particle has been implemented on GPU. The demo application has minor bugs, such as particles stuck on boundary. Also the empirically determined parameters may not be the best fit -- there are methods to determine them described for example in \cite{Articles:Mao}. Currently the euler integration method is used, but the leapfrog integration method is said to be more stable. The performance is much higher than on the CPU, but the implementation should still be improved if it was inteded for real-time application running 60 frames per second, which gives only about 17 ms for the entire frame. There seems to be unnecessarily higher penalty for higher number of cells, which should be investigated. On the other hand, it handles better higher number of particles.
+Fluid simulation using the SPH method has been implemented on GPU. The demo application has minor bugs, such as particles getting stuck on boundary. Also the empirically determined parameters may not be the best choice -- there are ways to determine them described for example in \cite{Articles:Mao}. Currently the euler integration method is used, but the leapfrog integration method is said to be more stable. The performance is much higher than on the CPU, but the implementation should still be improved if it was inteded for real-time application running 60 frames per second, which gives only about 17 ms for the entire frame. There seems to be unnecessarily higher penalty for higher number of cells, which should be investigated. On the other hand, it seems to handle higher number of particles better.
 
 The GPU implementation could most likely be improved. Firstly, the shader that creates cell records could be changed to use one thread per particle. Each thread would compare the ID of the cell it belongs to with that of the previous particle. If it is different, it indicates the beginning of the new cell in the sorted sequence of particle records and the thread would write its ID to the cell record. Second pass would work the same way but it would look for the end of the sequence of particle records and, using the beginning obtained in the previous pass, it would write the length of the sequence into the cell record.
 
