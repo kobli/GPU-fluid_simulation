@@ -2,7 +2,7 @@
 using namespace std;
 const unsigned localGroupSize = 1024;
 
-SPHgpu::SPHgpu(SPHconfig config, Bounds& _b): SPH{config, _b}, queryActive{false} {
+SPHgpu::SPHgpu(SPHconfig &config, Bounds& _b): SPH{config, _b}, queryActive{false} {
 	glGenQueries(1, &queryID);
 	updateProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHupdate.comp")});
 	densityProgram = loadShaderProgram({make_tuple(GL_COMPUTE_SHADER, "shaders/SPHdensity.comp")});

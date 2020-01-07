@@ -4,7 +4,7 @@
 
 class SPHgpu: public SPH {
 	public:
-		SPHgpu(SPHconfig config, Bounds& _b);
+		SPHgpu(SPHconfig &config, Bounds& _b);
 		void reset() override;
 		void update() override;
 
