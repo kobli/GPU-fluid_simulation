@@ -573,7 +573,7 @@ The application can be controlled by keys listed in table \ref{table:controls}. 
 \end{table}
 
 \section{Parameter choice and testing}
-The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. The fluid behaves strangely for large number of particles, as if it was compressing and expanding, possibly due to suboptimal choice of coefficients. Particles occasionally get stuck on the boundary. Also because the step size is constant and relatively large, the particles never stop moving. Figure \ref{fig:screen} shows a screenshot of the application. Also there were build problems on Windows with the included CMake configuration file, which was not able to generate the project even after manually setting the paths to dependencies. 
+The SPH method has several parameters. The currently used values listed in table \ref{table:parameters} have been determined empirically. The application was tested visually with these parameters for varying number of particles and NN grid resolution. The fluid behaves strangely for large number of particles, as if it was compressing and expanding, possibly due to suboptimal choice of coefficients. Particles occasionally get stuck on the boundary. Also because the step size is constant and relatively large, the particles never stop moving. Figure \ref{fig:screen} shows a screenshot of the application.
 
 \begin{figure}[!h]
 \centering
