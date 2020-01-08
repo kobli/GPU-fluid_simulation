@@ -1,6 +1,5 @@
 *.swp
 webpage/doc/*
 *.log
-*.cls
 *.dvi
 *.aux
